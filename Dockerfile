@@ -11,10 +11,9 @@ ENV DD_APM_ENABLED=true
 ENV NON_LOCAL_TRAFFIC=true
 ENV DD_APM_NON_LOCAL_TRAFFIC=true
 ENV DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
-ENV DD_AGENT_MAJOR_VERSION=7
+ENV DD_HOSTNAME=quickstark-railway-dd-agent
+CMD ["agent", "run"]
 
-ENTRYPOINT ["/entrypoint.sh"]
-CMD ["start-agent"]
  
 #  The  datadog.yaml  file is the main configuration file for the Datadog Agent. It contains the API key and other configuration settings. The  conf.d  directory contains additional configuration files for the Agent. 
 #  The  Dockerfile  file uses the  gcr.io/datadoghq/agent:latest  image as the base image. It copies the configuration files to the appropriate directories in the container. It also sets some environment variables. 
