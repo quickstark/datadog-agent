@@ -1,5 +1,5 @@
 # Use the official Datadog Agent image
-FROM gcr.io/datadoghq/agent:latest
+FROM datadog/agent:7
 ARG DD_API_KEY
 
 # Copy configuration files
@@ -7,10 +7,10 @@ COPY datadog.yaml /etc/datadog-agent/datadog.yaml
 COPY conf.d/ /etc/datadog-agent/conf.d/
 
 # Set environment variables (optional)
-# ENV DD_APM_ENABLED=true
-# ENV NON_LOCAL_TRAFFIC=true
-# ENV DD_APM_NON_LOCAL_TRAFFIC=true
-# ENV DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+ENV DD_APM_ENABLED=true
+ENV NON_LOCAL_TRAFFIC=true
+ENV DD_APM_NON_LOCAL_TRAFFIC=true
+ENV DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
 # ENV DD_HOSTNAME=quickstark-railway-dd-agent
 CMD ["agent", "run"]
 
