@@ -15,6 +15,39 @@ dd_url: https://app.datadoghq.com
 #   - env:prod
 #   - role:database
 
+####################################
+## Trace Collection Configuration ##
+####################################
+
+## @param apm_config - custom object - optional
+## Enter specific configurations for your trace collection.
+## Uncomment this parameter and the one below to enable them.
+## See https://docs.datadoghq.com/agent/apm/
+#
+apm_config:
+
+  ## @param enabled - boolean - optional - default: true
+  ## @env DD_APM_ENABLED - boolean - optional - default: true
+  ## Set to true to enable the APM Agent.
+  #
+  enabled: true
+
+  ## @param env - string - optional - default: none
+  ## @env DD_APM_ENV - string - optional - default: none
+  ## The environment tag that Traces should be tagged with.
+  ## If not set the value will be inherited, in order, from the top level
+  ## "env" config option if set and then from the 'env:' tag if present in the
+  ## 'tags' top level config option.
+  #
+  env: dev
+
+  ## @param receiver_port - integer - optional - default: 8126
+  ## @env DD_APM_RECEIVER_PORT - integer - optional - default: 8126
+  ## The port that the trace receiver should listen on.
+  ## Set to 0 to disable the HTTP receiver.
+  #
+  receiver_port: 8126
+  
 # Forwarder timeout in seconds
 # forwarder_timeout: 20
 
