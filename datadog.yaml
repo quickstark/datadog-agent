@@ -7,13 +7,12 @@ dd_url: https://app.datadoghq.com
 # api_key:
 
 # Force the hostname to whatever you want. (default: auto-detected)
-# hostname:
+hostname: railway-dd-agent
 
 # Set the host's tags (optional)
-# tags:
-#   - mytag
-#   - env:prod
-#   - role:database
+tags:
+  - env:dev
+  - deployment:railway
 
 ####################################
 ## Trace Collection Configuration ##
