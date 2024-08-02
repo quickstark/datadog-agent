@@ -1,13 +1,13 @@
 # The host of the Datadog intake server to send Agent data to
-dd_url: https://app.datadoghq.com
+# dd_url: https://app.datadoghq.com
 
 # The Datadog api key to associate your Agent's data with your organization.
 # Can be found here:
 # https://app.datadoghq.com/account/settings
-# api_key:
+# api_key: 
 
 # Force the hostname to whatever you want. (default: auto-detected)
-hostname: railway-dd-agent
+# hostname: railway-dd-agent
 
 # Set the host's tags (optional)
 tags:
@@ -23,13 +23,13 @@ tags:
 ## Uncomment this parameter and the one below to enable them.
 ## See https://docs.datadoghq.com/agent/apm/
 #
-apm_config:
+# apm_config:
 
   ## @param enabled - boolean - optional - default: true
   ## @env DD_APM_ENABLED - boolean - optional - default: true
   ## Set to true to enable the APM Agent.
   #
-  enabled: true
+  # enabled: true
 
   ## @param env - string - optional - default: none
   ## @env DD_APM_ENV - string - optional - default: none
@@ -38,21 +38,21 @@ apm_config:
   ## "env" config option if set and then from the 'env:' tag if present in the
   ## 'tags' top level config option.
   #
-  env: dev
+  # env: dev
 
   ## @param receiver_port - integer - optional - default: 8126
   ## @env DD_APM_RECEIVER_PORT - integer - optional - default: 8126
   ## The port that the trace receiver should listen on.
   ## Set to 0 to disable the HTTP receiver.
   #
-  receiver_port: 8126
+  # receiver_port: 8126
   
   ## @param apm_non_local_traffic - boolean - optional - default: false
   ## @env DD_APM_NON_LOCAL_TRAFFIC - boolean - optional - default: false
   ## Set to true so the Trace Agent listens for non local traffic,
   ## i.e if Traces are being sent to this Agent from another host/container
   #
-  apm_non_local_traffic: true
+  # apm_non_local_traffic: true
 
 # Forwarder timeout in seconds
 # forwarder_timeout: 20
