@@ -6,7 +6,9 @@ instances:
   ## NOTE: Even if the server name is "localhost", the agent connects to
   ## PostgreSQL using TCP/IP, unless you also provide a value for the sock key.
   #
-  - host: viaduct.proxy.rlwy.net
+  - dbm: true
+
+    host: viaduct.proxy.rlwy.net
 
     ## @param port - integer - required
     ## Port to use when connecting to PostgreSQL.
@@ -27,7 +29,7 @@ instances:
     ## Name of the PostgresSQL database to monitor.
     ## Note: If omitted, the default system postgres database is queried.
     #
-    dbname: "postgres"
+    # dbname: "postgres"
 
     # @param disable_generic_tags - boolean - optional - default: false
     # The integration will stop sending server tag as is redundant with host tag
