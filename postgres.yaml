@@ -29,7 +29,7 @@ instances:
     ## Name of the PostgresSQL database to monitor.
     ## Note: If omitted, the default system postgres database is queried.
     #
-    # dbname: "postgres"
+    dbname: "railway"
 
     # @param disable_generic_tags - boolean - optional - default: false
     # The integration will stop sending server tag as is redundant with host tag
