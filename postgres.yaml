@@ -34,3 +34,7 @@ instances:
     # @param disable_generic_tags - boolean - optional - default: false
     # The integration will stop sending server tag as is redundant with host tag
     disable_generic_tags: true
+
+    ## @collect_schemas - boolean - optional - default: false
+    collect_schemas:
+      enabled: true
