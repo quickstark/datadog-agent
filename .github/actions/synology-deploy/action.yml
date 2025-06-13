@@ -1,0 +1,116 @@
+name: 'Deploy to Synology'
+description: 'Reusable action for deploying Docker containers to Synology NAS'
+
+inputs:
+  synology-host:
+    description: 'Synology IP address'
+    required: true
+  synology-ssh-port:
+    description: 'SSH port (usually 22)'
+    required: true
+    default: '22'
+  synology-user:
+    description: 'SSH username'
+    required: true
+  ssh-private-key:
+    description: 'SSH private key'
+    required: true
+  dockerhub-username:
+    description: 'Docker Hub username'
+    required: true
+  dockerhub-token:
+    description: 'Docker Hub token'
+    required: true
+  docker-image:
+    description: 'Docker image to deploy'
+    required: true
+  docker-compose-content:
+    description: 'Docker compose file content'
+    required: true
+  deployment-directory:
+    description: 'Directory on Synology for deployment'
+    required: true
+  service-name:
+    description: 'Name of the main service for health checks'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Deploy to Synology
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ inputs.synology-host }}
+        port: ${{ inputs.synology-ssh-port }}
+        username: ${{ inputs.synology-user }}
+        key: ${{ inputs.ssh-private-key }}
+        script: |
+          # Common deployment logic here
+          echo "🔧 Deploying ${{ inputs.docker-image }} to ${{ inputs.deployment-directory }}"
+          
+          # Docker detection and setup
+          if [ -f /usr/local/bin/docker ]; then
+            DOCKER_CMD="/usr/local/bin/docker"
+          elif [ -f /usr/bin/docker ]; then
+            DOCKER_CMD="/usr/bin/docker"
+          elif command -v docker >/dev/null 2>&1; then
+            DOCKER_CMD="docker"
+          else
+            echo "❌ Docker not found"
+            exit 1
+          fi
+          
+          # Check permissions
+          if ! $DOCKER_CMD --version >/dev/null 2>&1; then
+            if sudo $DOCKER_CMD --version >/dev/null 2>&1; then
+              DOCKER_CMD="sudo $DOCKER_CMD"
+            else
+              echo "❌ Cannot access Docker"
+              exit 1
+            fi
+          fi
+          
+          # Docker Compose detection
+          if command -v docker-compose >/dev/null 2>&1; then
+            COMPOSE_CMD="docker-compose"
+          elif $DOCKER_CMD compose version >/dev/null 2>&1; then
+            COMPOSE_CMD="$DOCKER_CMD compose"
+          else
+            echo "❌ Docker Compose not found"
+            exit 1
+          fi
+          
+          # Create deployment directory
+          sudo mkdir -p "${{ inputs.deployment-directory }}"
+          sudo chown $(whoami):users "${{ inputs.deployment-directory }}"
+          cd "${{ inputs.deployment-directory }}"
+          
+          # Login to Docker Hub
+          echo "🔐 Logging into Docker Hub..."
+          echo "${{ inputs.dockerhub-token }}" | $DOCKER_CMD login --username "${{ inputs.dockerhub-username }}" --password-stdin
+          
+          # Pull latest image
+          echo "📥 Pulling ${{ inputs.docker-image }}..."
+          $DOCKER_CMD pull "${{ inputs.docker-image }}"
+          
+          # Write docker-compose file
+          echo "📝 Updating docker-compose.yaml..."
+          cat > docker-compose.yaml << 'EOF'
+          ${{ inputs.docker-compose-content }}
+          EOF
+          
+          # Deploy
+          echo "🚀 Deploying services..."
+          $COMPOSE_CMD down --timeout 30 || echo "No existing services"
+          $COMPOSE_CMD up -d
+          
+          # Health check
+          echo "🏥 Health check..."
+          sleep 30
+          if $COMPOSE_CMD ps | grep -q "${{ inputs.service-name }}.*Up"; then
+            echo "✅ Service is running"
+          else
+            echo "❌ Service failed to start"
+            $COMPOSE_CMD logs "${{ inputs.service-name }}"
+            exit 1
+          fi 

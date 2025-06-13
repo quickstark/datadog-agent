@@ -1,0 +1,12 @@
+# System Probe Configuration
+# This file configures the system-probe component of the Datadog Agent
+
+####################################
+## Traceroute Configuration #######
+####################################
+
+traceroute:
+  ## @param enabled - bool - required - default:false
+  ## Enable traceroute collection for network path monitoring
+  #
+  enabled: true 

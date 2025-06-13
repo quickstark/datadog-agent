@@ -1,5 +1,0 @@
-logs:
-  - type: udp
-    port: 514
-    service: "someapp"
-    source: syslog

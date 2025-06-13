@@ -1,0 +1,96 @@
+version: '3'
+
+services:
+  dd-agent:
+    image: dd-agent:latest
+    container_name: dd-agent
+    privileged: true
+    networks:
+      - dd-net
+    ports:
+      - "8125:8125/udp"
+      - "8126:8126/tcp"
+      # NetFlow ports (matching your datadog.yaml configuration)
+      - "2055:2055/udp"    # NetFlow 9
+      - "2056:2056/udp"    # NetFlow 5
+      - "4739:4739/udp"    # IPFIX
+      - "6343:6343/udp"    # sFlow 5
+      # Syslog port
+      - "514:514/udp"      # Syslog
+    environment:
+      - DD_API_KEY=${DD_API_KEY}
+      - DD_SITE=datadoghq.com
+      - DD_HOSTNAME=Synology
+      - DD_APM_ENABLED=true
+      - DD_LOGS_ENABLED=true
+      - DD_PROCESS_AGENT_ENABLED=true
+      - DD_SYSTEM_PROBE_NETWORK_ENABLED=true
+      - DD_PROCESS_CONFIG_PROCESS_COLLECTION_ENABLED=true
+      - DD_PROCESS_CONFIG_CONTAINER_COLLECTION_ENABLED=true
+      - DD_LOGS_CONFIG_LOGS_DD_URL=http://dd-opw:8282
+      - DD_LOGS_CONFIG_USE_HTTP=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+      - DD_ENABLE_METADATA_COLLECTION=true
+      - DD_LOG_LEVEL=info
+      - DD_CMD_PORT=5002
+      - DD_EXPVAR_PORT=5003
+      - DD_APM_DD_URL=http://192.168.1.100:3835
+      - DD_APM_NON_LOCAL_TRAFFIC=true
+      - DD_APM_ENV=dev
+      - DD_INVENTORIES_CONFIGURATION_ENABLED=true
+      - DD_REMOTE_UPDATES=true
+      - DD_TAGS=env:dev,deployment:synology
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /sys/fs/cgroup:/host/sys/fs/cgroup:ro
+      - /sys/kernel/debug:/sys/kernel/debug
+      - /etc/passwd:/etc/passwd:ro
+      - /volume1/@docker/containers:/var/lib/docker/containers:ro
+      # Configuration volume mapping
+      - /volume1/docker/datadog-agent/datadog.yaml:/etc/datadog-agent/datadog.yaml:ro
+      - /volume1/docker/datadog-agent/system-probe.yaml:/etc/datadog-agent/system-probe.yaml:ro
+      - /volume1/docker/datadog-agent/conf.d:/etc/datadog-agent/conf.d:ro
+    cap_add:
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - SYS_PTRACE
+      - NET_ADMIN
+      - NET_BROADCAST
+      - NET_RAW
+      - IPC_LOCK
+      - CHOWN
+    security_opt:
+      - apparmor:unconfined
+    restart: unless-stopped
+
+  dd-opw:
+    image: datadog/observability-pipelines-worker:latest
+    container_name: dd-opw
+    networks:
+      - dd-net
+    ports:
+      - "8282:8282/tcp"
+      - "8686:8686/tcp"
+    environment:
+      - DD_API_KEY=${DD_OPW_API_KEY}
+      - DD_OP_PIPELINE_ID=${DD_OP_PIPELINE_ID}
+      - DD_SITE=datadoghq.com
+      - DD_OP_SOURCE_DATADOG_AGENT_ADDRESS=0.0.0.0:8282
+      - DD_OP_CONFIG_SOURCE=datadog
+      - DD_LOG_LEVEL=debug
+      - RUST_LOG=info,observability_pipelines_worker=debug,vector=debug
+      - DD_OP_API_ENABLED=true
+      - DD_OP_API_ADDRESS=0.0.0.0:8686
+    volumes:
+      - opw-data:/var/lib/datadog/observability-pipelines-worker
+    restart: unless-stopped
+    command: ["run"]  # Explicit command array format
+
+networks:
+  dd-net:
+    driver: bridge
+
+volumes:
+  opw-data:

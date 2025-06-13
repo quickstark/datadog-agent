@@ -1,0 +1,104 @@
+# =============================================================================
+# Datadog Agent Repository .gitignore
+# =============================================================================
+
+# Environment files (NEVER commit these!)
+.env*
+!.env.example
+env.*
+!env.example
+
+# Secrets and credentials
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Datadog Agent specific
+datadog-agent.log
+agent.log
+*.pid
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vim/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+*.backup
+*.orig
+
+# Build artifacts
+dist/
+build/
+*.tar.gz
+*.zip
+
+# Node.js (if using any JS tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if using any Python tools)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Local development
+.local/
+.cache/
+.config/
+
+# SSH keys and certificates
+id_rsa*
+id_ed25519*
+*.crt
+*.csr
+
+# Backup files
+*~
+*.bak
+*.backup
+*.old
+
+# OS generated files
+.fseventsd
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Network Trash Folder
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk 

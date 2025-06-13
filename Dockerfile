@@ -1,29 +1,61 @@
-FROM datadog/agent:7
+    # Stage 1: Builder
+    FROM datadog/agent:latest AS builder
 
-# Set environment variables
-ENV DD_LOGS_ENABLED=true
-ENV DD_APM_ENABLED=true
-ENV DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
-ENV DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
-ENV DD_APM_NON_LOCAL_TRAFFIC=true
-ENV DD_BIND_HOST=::1
-ENV DD_SYSTEM_PROBE_SERVICE_MONITORING_ENABLED=true
+    # Install PostgreSQL dependencies
+    RUN pip3 install --no-cache-dir psycopg2-binary
 
-# Reference Variables defined in Railway
-ARG DD_API_KEY
-ARG DD_HOSTNAME
-ARG DD_SITE
+    # Stage 2: Final
+    FROM datadog/agent:latest
 
-# Copy datadog.yaml into the container
-COPY datadog.yaml /etc/datadog-agent/datadog.yaml
+    # Set required labels
+    LABEL maintainer="Dirk" \
+        description="Custom Datadog Agent with PostgreSQL and MongoDB monitoring"
 
-# Copy postgres.yaml into the container
-COPY postgres.yaml /etc/datadog-agent/conf.d/postgres.d/
+    # Set environment variables to match docker-compose configuration
+    ENV DD_SITE=datadoghq.com \
+        DD_HOSTNAME=Synology \
+        DD_APM_ENABLED=true \
+        DD_LOGS_ENABLED=true \
+        DD_PROCESS_AGENT_ENABLED=true \
+        DD_PROCESS_CONFIG_PROCESS_COLLECTION_ENABLED=true \
+        DD_PROCESS_CONFIG_CONTAINER_COLLECTION_ENABLED=true \
+        DD_LOGS_CONFIG_LOGS_DD_URL=http://dd-opw:8282 \
+        DD_LOGS_CONFIG_USE_HTTP=true \
+        DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
+        DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true \
+        DD_ENABLE_METADATA_COLLECTION=true \
+        DD_LOG_LEVEL=info \
+        DD_CMD_PORT=5002 \
+        DD_EXPVAR_PORT=5003 \
+        DD_APM_DD_URL=http://192.168.1.100:3835 \
+        DD_APM_NON_LOCAL_TRAFFIC=true \
+        DD_APM_ENV=dev \
+        DD_INVENTORIES_CONFIGURATION_ENABLED=true \
+        DD_REMOTE_UPDATES=true \
+        DD_TAGS=env:dev,deployment:synology
 
-# Copy syslog configuration file
-COPY syslog.yaml /etc/datadog-agent/conf.d/syslog.d/
+    # Install PostgreSQL dependencies in the final stage
+    RUN pip3 install --no-cache-dir psycopg2-binary
 
-# DogStatsD port, APM port, and the syslog port
-EXPOSE 8125/udp
-EXPOSE 8126
-EXPOSE 514/udp
+    # Note: Configuration files are now managed via volume mounts during deployment
+# This allows for easier updates without rebuilding the Docker image
+# The following directories will be mounted at runtime:
+# - /volume1/docker/datadog-agent/datadog.yaml:/etc/datadog-agent/datadog.yaml:ro
+# - /volume1/docker/datadog-agent/system-probe.yaml:/etc/datadog-agent/system-probe.yaml:ro
+# - /volume1/docker/datadog-agent/conf.d:/etc/datadog-agent/conf.d:ro
+
+    # Expose all ports to match docker-compose configuration
+    EXPOSE 8125/udp 8126 5002 5003 514/udp 
+
+    # Set healthcheck
+    HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD ["/opt/datadog-agent/bin/agent/agent", "health"]
+
+    # Volume mount points documentation (actual mounts done at runtime)
+    # The following volumes should be mounted when running the container:
+    # - /var/run/docker.sock:/var/run/docker.sock
+    # - /proc:/host/proc:ro
+    # - /sys/fs/cgroup:/host/sys/fs/cgroup:ro
+    # - /etc/passwd:/etc/passwd:ro
+    # - /volume1/@docker/containers:/var/lib/docker/containers:ro (adjust path as needed)
+    #
+    # Container should be run with --privileged flag for full functionality
