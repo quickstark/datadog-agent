@@ -21,6 +21,10 @@ NC='\033[0m' # No Color
 # Configuration
 DEFAULT_ENV_FILE=".env.datadog"
 
+# Temporary file for storing secrets (compatible with all bash versions)
+SECRETS_TEMP_FILE=$(mktemp)
+trap 'rm -f "$SECRETS_TEMP_FILE"' EXIT
+
 # Helper functions
 print_step() {
     echo -e "${BLUE}🔄 $1${NC}"
@@ -36,6 +40,18 @@ print_warning() {
 
 print_error() {
     echo -e "${RED}❌ $1${NC}"
+}
+
+# Function to get secret value by key
+get_secret() {
+    local key="$1"
+    grep "^$key=" "$SECRETS_TEMP_FILE" 2>/dev/null | cut -d'=' -f2- | head -1
+}
+
+# Function to check if secret exists
+has_secret() {
+    local key="$1"
+    grep -q "^$key=" "$SECRETS_TEMP_FILE" 2>/dev/null
 }
 
 check_gh_auth() {
@@ -73,8 +89,8 @@ load_env_file() {
     
     print_step "Loading environment variables from: $env_file"
     
-    # Create associative array for secrets
-    declare -gA secrets
+    # Clear any existing secrets
+    > "$SECRETS_TEMP_FILE"
     local count=0
     
     while IFS= read -r line || [[ -n "$line" ]]; do
@@ -91,8 +107,8 @@ load_env_file() {
             # Remove surrounding quotes
             value=$(echo "$value" | sed 's/^["'\'']\|["'\'']$//g')
             
-            # Store in secrets array
-            secrets["$key"]="$value"
+            # Store in temp file
+            echo "$key=$value" >> "$SECRETS_TEMP_FILE"
             ((count++))
         fi
     done < "$env_file"
@@ -119,19 +135,24 @@ validate_required_secrets() {
     
     local missing_secrets=()
     local placeholder_secrets=()
+    local found_count=0
     
     for secret in "${required_secrets[@]}"; do
-        if [[ -z "${secrets[$secret]}" ]]; then
+        if ! has_secret "$secret"; then
             missing_secrets+=("$secret")
-        elif [[ "${secrets[$secret]}" =~ ^(your-|sk-your-|secret_your-|dd_|change_me|example) ]]; then
-            placeholder_secrets+=("$secret")
+        else
+            local value=$(get_secret "$secret")
+            ((found_count++))
+            if [[ "$value" =~ ^(your-|sk-your-|secret_your-|dd_|change_me|example) ]]; then
+                placeholder_secrets+=("$secret")
+            fi
         fi
     done
     
     # Report validation results
     echo -e "${CYAN}Secret Validation Summary:${NC}"
     echo "  Required secrets: ${#required_secrets[@]}"
-    echo "  Found secrets: $((${#required_secrets[@]} - ${#missing_secrets[@]}))"
+    echo "  Found secrets: $found_count"
     echo "  Missing secrets: ${#missing_secrets[@]}"
     echo "  Placeholder values: ${#placeholder_secrets[@]}"
     echo
@@ -147,7 +168,8 @@ validate_required_secrets() {
     if [[ ${#placeholder_secrets[@]} -gt 0 ]]; then
         print_warning "Secrets with placeholder values:"
         for secret in "${placeholder_secrets[@]}"; do
-            echo "  - $secret = ${secrets[$secret]}"
+            local value=$(get_secret "$secret")
+            echo "  - $secret = $value"
         done
         echo
         
@@ -186,7 +208,7 @@ upload_secrets() {
     )
     
     for secret_name in "${required_secrets[@]}"; do
-        local secret_value="${secrets[$secret_name]}"
+        local secret_value=$(get_secret "$secret_name")
         
         if [[ -z "$secret_value" ]]; then
             print_warning "Skipping empty secret: $secret_name"
