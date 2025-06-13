@@ -11,6 +11,7 @@
 
 name: Build and Deploy Datadog Agent
 on:
+  workflow_dispatch:  # Allow manual triggering
   push:
     branches: [ main ]
     paths:
@@ -19,6 +20,8 @@ on:
       - 'docker-compose.yaml'
       - 'conf.d/**'
       - 'system-probe.yaml'
+      - 'scripts/**'
+      - '.github/workflows/**'
   pull_request:
     branches: [ main ]
     paths:
@@ -27,6 +30,8 @@ on:
       - 'docker-compose.yaml'
       - 'conf.d/**'
       - 'system-probe.yaml'
+      - 'scripts/**'
+      - '.github/workflows/**'
 
 jobs:
   build-and-deploy:
