@@ -67,16 +67,17 @@ check_gh_auth() {
 }
 
 get_repo_info() {
-    print_step "Getting repository information..."
+    print_step "Getting repository information..." >&2
     
-    local repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null)
+    local repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null | tr -d '\n')
     if [[ -z "$repo" ]]; then
-        print_error "Not in a GitHub repository or repository not found"
+        print_error "Not in a GitHub repository or repository not found" >&2
         exit 1
     fi
     
-    echo "Repository: $repo"
-    echo "$repo"
+    echo "Repository: $repo" >&2
+    # Return just the repo name without any formatting or newlines
+    printf "%s" "$repo"
 }
 
 load_env_file() {
@@ -188,7 +189,8 @@ validate_required_secrets() {
 upload_secrets() {
     local repo="$1"
     
-    print_step "Uploading secrets to GitHub repository: $repo"
+    print_step "Uploading secrets to GitHub repository:"
+    echo "  Repository: $repo"
     
     local success_count=0
     local error_count=0
@@ -218,7 +220,7 @@ upload_secrets() {
         
         print_step "Uploading: $secret_name"
         
-        if gh secret set "$secret_name" --body "$secret_value" --repo "$repo" 2>/dev/null; then
+        if gh secret set "$secret_name" --body "$secret_value" --repo "$repo"; then
             print_success "✓ $secret_name"
             ((success_count++))
         else
