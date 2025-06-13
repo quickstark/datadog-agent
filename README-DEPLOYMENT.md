@@ -37,7 +37,7 @@ Set these secrets in your GitHub repository settings:
 - `SYNOLOGY_HOST` - Your Synology IP address
 - `SYNOLOGY_SSH_PORT` - SSH port (usually 22)
 - `SYNOLOGY_USER` - SSH username
-- `SSH_PRIVATE_KEY` - SSH private key for authentication
+- `SYNOLOGY_SSH_KEY` - SSH private key for authentication
 
 ### Datadog Configuration
 - `DD_API_KEY` - Your Datadog API key

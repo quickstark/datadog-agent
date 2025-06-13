@@ -129,3 +129,66 @@ To verify that the Datadog Agent is working correctly:
 - [Datadog Agent Docker Documentation](https://docs.datadoghq.com/containers/docker/)
 - [Datadog Agent Configuration](https://docs.datadoghq.com/agent/configuration/)
 - [Docker buildx Documentation](https://docs.docker.com/engine/reference/commandline/buildx/)
+
+# Datadog Agent Custom Setup
+
+This repository contains a custom Datadog Agent configuration with PostgreSQL and MongoDB monitoring capabilities.
+
+## Running with Docker Compose
+
+To run using docker-compose (recommended):
+
+```bash
+docker-compose up -d
+```
+
+## Running with Docker (Functionally Equivalent)
+
+If you prefer to run the container directly with Docker instead of docker-compose, use the following command to achieve the same functionality:
+
+```bash
+# Build the custom image first
+docker build -t dd-agent:latest .
+
+# Run the container with all necessary configurations
+docker run -d \
+  --name dd-agent \
+  --privileged \
+  --restart unless-stopped \
+  -p 8125:8125/udp \
+  -p 8126:8126/tcp \
+  -e DD_API_KEY=${DD_API_KEY} \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /proc:/host/proc:ro \
+  -v /sys/fs/cgroup:/host/sys/fs/cgroup:ro \
+  -v /etc/passwd:/etc/passwd:ro \
+  -v /volume1/@docker/containers:/var/lib/docker/containers:ro \
+  --network dd-net \
+  dd-agent:latest
+```
+
+### Important Notes:
+
+- **Privileged Mode**: The `--privileged` flag is required for the agent to access system information
+- **Docker Socket**: Mount `/var/run/docker.sock` to enable container monitoring
+- **Host Filesystem**: Mount `/proc`, `/sys/fs/cgroup`, and `/etc/passwd` for system monitoring
+- **Container Logs**: Adjust the `/volume1/@docker/containers` path to match your Docker containers directory
+- **Network**: Create the `dd-net` network first: `docker network create dd-net`
+- **API Key**: Replace the DD_API_KEY with your actual Datadog API key
+
+### Environment Variables Included:
+
+The Dockerfile now includes all environment variables from the docker-compose configuration:
+- DD_SITE, DD_HOSTNAME, DD_APM_ENABLED, DD_LOGS_ENABLED
+- DD_PROCESS_AGENT_ENABLED, DD_PROCESS_CONFIG_*
+- DD_LOGS_CONFIG_*, DD_DOGSTATSD_NON_LOCAL_TRAFFIC
+- DD_ENABLE_METADATA_COLLECTION, DD_LOG_LEVEL
+- DD_CMD_PORT, DD_EXPVAR_PORT, DD_APM_*
+- DD_INVENTORIES_CONFIGURATION_ENABLED, DD_TAGS
+
+### Port Mappings:
+
+- 8125/udp: DogStatsD
+- 8126/tcp: APM Traces
+- 5002/tcp: Command Port
+- 5003/tcp: Expvar Port
