@@ -74,7 +74,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ steps.meta.outputs.date }}
       
-      # Validate configuration files
+      # Validate configuration files  
       - name: Validate Datadog configuration
         run: |
           echo "Validating Datadog configuration files..."
@@ -85,8 +85,8 @@ jobs:
             exit 1
           fi
           
-          if [ ! -f "docker-compose.yaml" ]; then
-            echo "❌ docker-compose.yaml not found"
+          if [ ! -f "Dockerfile" ]; then
+            echo "❌ Dockerfile not found"
             exit 1
           fi
           
@@ -96,10 +96,14 @@ jobs:
             exit 1
           }
           
-          python -c "import yaml; yaml.safe_load(open('docker-compose.yaml'))" || {
-            echo "❌ docker-compose.yaml has invalid YAML syntax"
-            exit 1
-          }
+          # Validate system-probe.yaml if it exists
+          if [ -f "system-probe.yaml" ]; then
+            python -c "import yaml; yaml.safe_load(open('system-probe.yaml'))" || {
+              echo "❌ system-probe.yaml has invalid YAML syntax"
+              exit 1
+            }
+            echo "✅ system-probe.yaml is valid"
+          fi
           
           # Validate conf.d configurations
           for config_file in conf.d/**/*.yaml; do
@@ -165,20 +169,8 @@ jobs:
               exit 1
             fi
             
-            # Docker Compose command
-            if command -v docker-compose >/dev/null 2>&1; then
-              COMPOSE_CMD="docker-compose"
-            elif $DOCKER_CMD compose version >/dev/null 2>&1; then
-              COMPOSE_CMD="$DOCKER_CMD compose"
-            elif sudo docker-compose --version >/dev/null 2>&1; then
-              COMPOSE_CMD="sudo docker-compose"
-            else
-              echo "❌ Docker Compose not found"
-              exit 1
-            fi
-            
             echo "Using Docker: $DOCKER_CMD"
-            echo "Using Compose: $COMPOSE_CMD"
+            echo "Note: Using standalone Docker deployment (no docker-compose needed)"
             
             # Set up Datadog Agent directory structure
             DATADOG_DIR="/volume1/docker/datadog-agent"
