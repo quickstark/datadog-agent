@@ -1,89 +1,94 @@
 init_config:
 
-instances:
-  - hosts:
-      - ac-fp8awt6-shard-00-00.nwq0dl1.mongodb.net:27017
-    username: datadog
-    password: "yNAlz82ZHzBrDczA"
-    options:
-      authSource: admin
-      directConnection: "false"
-    tls: true
-    dbm: true
-    cluster_name: Demo
-    reported_database_hostname: "MongoDB Atlas Dev"
-    additional_metrics: ["metrics.commands", "tcmalloc", "top", "collection"]
-    collections_indexes_stats: true
-    database_autodiscovery:
-      enabled: true
-    tags:
-      - "service:mongodb"
-      - "env:dev"
-      - "cluster_tier:m10"
-      - "replica_set:ac-fp8awt6-shard-0"
-      - "node:0"
-    operation_samples:
-      enabled: true
-      collection_interval: 10
-      explain_verbosity: queryPlanner
-    slow_operations:
-      enabled: true
-      collection_interval: 10
+# MongoDB Atlas M10 configuration - TEMPORARILY DISABLED
+# Uncomment the instances below when M10 deployment is re-enabled
+# instances:
+#   - hosts:
+#       - ac-fp8awt6-shard-00-00.nwq0dl1.mongodb.net:27017
+#     username: datadog
+#     password: "yNAlz82ZHzBrDczA"
+#     options:
+#       authSource: admin
+#       directConnection: "false"
+#     tls: true
+#     dbm: true
+#     cluster_name: Demo
+#     reported_database_hostname: "MongoDB Atlas Dev"
+#     additional_metrics: ["metrics.commands", "tcmalloc", "top", "collection"]
+#     collections_indexes_stats: true
+#     database_autodiscovery:
+#       enabled: true
+#     tags:
+#       - "service:mongodb"
+#       - "env:dev"
+#       - "cluster_tier:m10"
+#       - "replica_set:ac-fp8awt6-shard-0"
+#       - "node:0"
+#     operation_samples:
+#       enabled: true
+#       collection_interval: 10
+#       explain_verbosity: queryPlanner
+#     slow_operations:
+#       enabled: true
+#       collection_interval: 10
 
-  - hosts:
-      - ac-fp8awt6-shard-00-01.nwq0dl1.mongodb.net:27017
-    username: datadog
-    password: "yNAlz82ZHzBrDczA"
-    options:
-      authSource: admin
-      directConnection: "false"
-    tls: true
-    dbm: true
-    cluster_name: Demo
-    reported_database_hostname: "MongoDB Atlas Dev"
-    additional_metrics: ["metrics.commands", "tcmalloc", "top", "collection"]
-    collections_indexes_stats: true
-    database_autodiscovery:
-      enabled: true
-    tags:
-      - "service:mongodb"
-      - "env:dev"
-      - "cluster_tier:m10"
-      - "replica_set:ac-fp8awt6-shard-0"
-      - "node:1"
-    operation_samples:
-      enabled: true
-      collection_interval: 10
-      explain_verbosity: queryPlanner
-    slow_operations:
-      enabled: true
-      collection_interval: 10
+#   - hosts:
+#       - ac-fp8awt6-shard-00-01.nwq0dl1.mongodb.net:27017
+#     username: datadog
+#     password: "yNAlz82ZHzBrDczA"
+#     options:
+#       authSource: admin
+#       directConnection: "false"
+#     tls: true
+#     dbm: true
+#     cluster_name: Demo
+#     reported_database_hostname: "MongoDB Atlas Dev"
+#     additional_metrics: ["metrics.commands", "tcmalloc", "top", "collection"]
+#     collections_indexes_stats: true
+#     database_autodiscovery:
+#       enabled: true
+#     tags:
+#       - "service:mongodb"
+#       - "env:dev"
+#       - "cluster_tier:m10"
+#       - "replica_set:ac-fp8awt6-shard-0"
+#       - "node:1"
+#     operation_samples:
+#       enabled: true
+#       collection_interval: 10
+#       explain_verbosity: queryPlanner
+#     slow_operations:
+#       enabled: true
+#       collection_interval: 10
 
-  - hosts:
-      - ac-fp8awt6-shard-00-02.nwq0dl1.mongodb.net:27017
-    username: datadog
-    password: "yNAlz82ZHzBrDczA"
-    options:
-      authSource: admin
-      directConnection: "false"
-    tls: true
-    dbm: true
-    cluster_name: Demo
-    reported_database_hostname: "MongoDB Atlas Dev"
-    additional_metrics: ["metrics.commands", "tcmalloc", "top", "collection"]
-    collections_indexes_stats: true
-    database_autodiscovery:
-      enabled: true
-    tags:
-      - "service:mongodb"
-      - "env:dev"
-      - "cluster_tier:m10"
-      - "replica_set:ac-fp8awt6-shard-0"
-      - "node:2"
-    operation_samples:
-      enabled: true
-      collection_interval: 10
-      explain_verbosity: queryPlanner
-    slow_operations:
-      enabled: true
-      collection_interval: 10
+#   - hosts:
+#       - ac-fp8awt6-shard-00-02.nwq0dl1.mongodb.net:27017
+#     username: datadog
+#     password: "yNAlz82ZHzBrDczA"
+#     options:
+#       authSource: admin
+#       directConnection: "false"
+#     tls: true
+#     dbm: true
+#     cluster_name: Demo
+#     reported_database_hostname: "MongoDB Atlas Dev"
+#     additional_metrics: ["metrics.commands", "tcmalloc", "top", "collection"]
+#     collections_indexes_stats: true
+#     database_autodiscovery:
+#       enabled: true
+#     tags:
+#       - "service:mongodb"
+#       - "env:dev"
+#       - "cluster_tier:m10"
+#       - "replica_set:ac-fp8awt6-shard-0"
+#       - "node:2"
+#     operation_samples:
+#       enabled: true
+#       collection_interval: 10
+#       explain_verbosity: queryPlanner
+#     slow_operations:
+#       enabled: true
+#       collection_interval: 10
+
+# Empty instances array to disable the integration
+instances: []

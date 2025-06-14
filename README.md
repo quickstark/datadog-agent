@@ -41,7 +41,7 @@ SYNOLOGY_SSH_KEY="-----BEGIN OPENSSH PRIVATE KEY-----
 
 ### 2. Deploy to Synology
 
-```bash
+   ```bash
 # Run the automated deployment
 ./scripts/deploy.sh
 ```
@@ -129,7 +129,7 @@ The agent runs as a standalone Docker container with these settings:
 ## 🔍 Monitoring & Verification
 
 ### Check Deployment Status:
-```bash
+   ```bash
 # View GitHub Actions workflow
 https://github.com/your-username/datadog-agent-standalone/actions
 
@@ -294,7 +294,7 @@ The Dockerfile includes all required environment variables:
 ### Exposed Ports:
 
 - 8125/udp: DogStatsD
-- 8126/tcp: APM Traces  
+- 8126/tcp: APM Traces
 - 2055/udp, 2056/udp, 4739/udp, 6343/udp: NetFlow/sFlow
 - 514/udp: Syslog
 - 5002/tcp: Agent Command Port
