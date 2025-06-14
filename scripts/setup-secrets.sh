@@ -19,7 +19,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
-DEFAULT_ENV_FILE=".env.datadog"
+DEFAULT_ENV_FILE=".env"
 
 # Temporary file for storing secrets (compatible with all bash versions)
 SECRETS_TEMP_FILE=$(mktemp)
@@ -123,6 +123,7 @@ validate_required_secrets() {
     
     # Required secrets for Datadog Agent deployment
     # Note: OPW secrets removed - OPW deployed separately
+    # Note: SYNOLOGY_SSH_KEY should be uploaded manually due to formatting issues
     local required_secrets=(
         "DD_API_KEY"
         "DOCKERHUB_USER"
@@ -130,7 +131,6 @@ validate_required_secrets() {
         "SYNOLOGY_HOST"
         "SYNOLOGY_SSH_PORT"
         "SYNOLOGY_USER"
-        "SYNOLOGY_SSH_KEY"
     )
     
     local missing_secrets=()
@@ -197,6 +197,7 @@ upload_secrets() {
     
     # Required secrets for Datadog Agent deployment
     # Note: OPW secrets removed - OPW deployed separately
+    # Note: SYNOLOGY_SSH_KEY should be uploaded manually due to formatting issues
     local required_secrets=(
         "DD_API_KEY"
         "DOCKERHUB_USER"
@@ -204,7 +205,6 @@ upload_secrets() {
         "SYNOLOGY_HOST"
         "SYNOLOGY_SSH_PORT"
         "SYNOLOGY_USER"
-        "SYNOLOGY_SSH_KEY"
     )
     
     for secret_name in "${required_secrets[@]}"; do
@@ -240,6 +240,20 @@ upload_secrets() {
     fi
     
     print_success "All required secrets uploaded successfully!"
+    
+    # Special handling for SSH key
+    if has_secret "SYNOLOGY_SSH_KEY"; then
+        echo
+        print_warning "📋 MANUAL SETUP REQUIRED:"
+        echo "  The SYNOLOGY_SSH_KEY needs to be uploaded manually to GitHub:"
+        echo "  1. Go to: https://github.com/$repo/settings/secrets/actions"
+        echo "  2. Click 'New repository secret'"
+        echo "  3. Name: SYNOLOGY_SSH_KEY"
+        echo "  4. Value: Copy your SSH private key content from .env"
+        echo "  5. Make sure to include the full key with headers/footers"
+        echo
+    fi
+    
     return 0
 }
 
@@ -250,8 +264,7 @@ show_secret_info() {
     echo
     echo -e "${CYAN}Datadog Agent Secrets:${NC}"
     echo "  • DD_API_KEY - Your Datadog API key for agent authentication"
-    echo "  • DD_OPW_API_KEY - API key for Observability Pipelines Worker"
-    echo "  • DD_OP_PIPELINE_ID - Pipeline ID for OPW configuration"
+    echo "  • Agent sends logs to OPW (deployed separately)"
     echo
     echo -e "${CYAN}Infrastructure Secrets:${NC}"
     echo "  • DOCKERHUB_USER - Docker Hub username for image registry"
@@ -281,6 +294,7 @@ verify_secrets() {
     
     # Required secrets
     # Note: OPW secrets removed - OPW deployed separately
+    # Note: SYNOLOGY_SSH_KEY should be uploaded manually
     local required_secrets=(
         "DD_API_KEY"
         "DOCKERHUB_USER"
@@ -288,7 +302,6 @@ verify_secrets() {
         "SYNOLOGY_HOST"
         "SYNOLOGY_SSH_PORT"
         "SYNOLOGY_USER"
-        "SYNOLOGY_SSH_KEY"
     )
     
     local verified_count=0

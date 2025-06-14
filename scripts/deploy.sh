@@ -23,7 +23,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
-DEFAULT_ENV_FILE=".env.datadog"
+DEFAULT_ENV_FILE=".env"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
@@ -113,9 +113,7 @@ check_prerequisites() {
     if [[ ! -f "Dockerfile" ]]; then
         missing_files+=("Dockerfile")
     fi
-    if [[ ! -f "docker-compose.yaml" ]]; then
-        missing_files+=("docker-compose.yaml")
-    fi
+    # Note: docker-compose.yaml removed - using standalone Docker deployment
     
     if [[ ${#missing_files[@]} -gt 0 ]]; then
         print_error "Missing required files: ${missing_files[*]}"
@@ -175,16 +173,15 @@ validate_env_file() {
     print_step "Validating environment file: $env_file"
     
     # Required Datadog Agent variables
+    # Note: OPW secrets removed - OPW deployed separately
+    # Note: SYNOLOGY_SSH_KEY should be uploaded manually to GitHub
     local required_vars=(
         "DD_API_KEY"
-        # "DD_OPW_API_KEY" - removed, OPW deployed separately
-        # "DD_OP_PIPELINE_ID" - removed, OPW deployed separately
         "DOCKERHUB_USER"
         "DOCKERHUB_TOKEN"
         "SYNOLOGY_HOST"
         "SYNOLOGY_SSH_PORT"
         "SYNOLOGY_USER"
-        "SYNOLOGY_SSH_KEY"
     )
     
     # Count total variables and placeholders

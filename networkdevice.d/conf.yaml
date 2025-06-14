@@ -1,6 +1,0 @@
-logs:
-  - type: udp
-    port: 514
-    service: "unifi"
-    source: "unifi-router"
-    tags: ["location:argyle", "building:408 Village", "facility:home"]

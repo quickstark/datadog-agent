@@ -51,13 +51,20 @@
     # Set healthcheck
     HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD ["/opt/datadog-agent/bin/agent/agent", "health"]
 
-    # Volume mount points documentation (actual mounts done at runtime)
-    # The following volumes should be mounted when running the container:
-    # - /var/run/docker.sock:/var/run/docker.sock
-    # - /proc:/host/proc:ro
-    # - /sys/fs/cgroup:/host/sys/fs/cgroup:ro
-    # - /etc/passwd:/etc/passwd:ro
-    # - /volume1/@docker/containers:/var/lib/docker/containers:ro (adjust path as needed)
+    # Define volume mount points for Docker runtime
+    # These are critical for agent functionality and must be mounted at runtime
+    VOLUME ["/var/run/docker.sock", "/host/proc", "/host/sys/fs/cgroup", "/sys/kernel/debug", "/etc/passwd", "/var/lib/docker/containers"]
+    
+    # Runtime volume mount requirements (must be specified with docker run):
+    # - /var/run/docker.sock:/var/run/docker.sock:ro (Docker monitoring)
+    # - /proc:/host/proc:ro (System metrics)
+    # - /sys/fs/cgroup:/host/sys/fs/cgroup:ro (Container metrics) 
+    # - /sys/kernel/debug:/sys/kernel/debug (System probe)
+    # - /etc/passwd:/etc/passwd:ro (User mapping)
+    # - /volume1/@docker/containers:/var/lib/docker/containers:ro (Container logs)
+    # - /volume1/docker/datadog-agent/datadog.yaml:/etc/datadog-agent/datadog.yaml:ro
+    # - /volume1/docker/datadog-agent/system-probe.yaml:/etc/datadog-agent/system-probe.yaml:ro
+    # - /volume1/docker/datadog-agent/conf.d:/etc/datadog-agent/conf.d:ro
     #
     # Container should be run with --privileged flag for full functionality
     # Required capabilities when not using --privileged:
