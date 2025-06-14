@@ -1,0 +1,17 @@
+init_config:
+  min_collection_interval: 60 # in seconds, default 60 seconds
+instances:
+  # configure the endpoints you want to monitor, one check instance per endpoint
+  # warning: Do not set the port when using UDP. Setting the port when using UDP can cause traceroute calls to fail and falsely report an unreachable destination.
+
+  - hostname: api.datadoghq.com # endpoint hostname or IP
+    protocol: TCP
+    port: 443
+    tags:
+      - "location:argyle"
+      - "building:408 Village"
+      - "facility:home"
+  ## optional configs:
+  # max_ttl: 30 # max traderoute TTL, default is 30
+  # timeout: 1000 # timeout in milliseconds per hop, default is 1s
+

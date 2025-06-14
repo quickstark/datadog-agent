@@ -1,0 +1,10 @@
+init_config:
+
+instances:
+  - port: 514
+    transport: udp
+    tags:
+      - source:syslog
+      - service:unifi
+      - location:argyle
+      - facility:home 

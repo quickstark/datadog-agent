@@ -122,10 +122,9 @@ validate_required_secrets() {
     print_step "Validating required secrets..."
     
     # Required secrets for Datadog Agent deployment
+    # Note: OPW secrets removed - OPW deployed separately
     local required_secrets=(
         "DD_API_KEY"
-        "DD_OPW_API_KEY"
-        "DD_OP_PIPELINE_ID"
         "DOCKERHUB_USER"
         "DOCKERHUB_TOKEN"
         "SYNOLOGY_HOST"
@@ -197,10 +196,9 @@ upload_secrets() {
     local skipped_count=0
     
     # Required secrets for Datadog Agent deployment
+    # Note: OPW secrets removed - OPW deployed separately
     local required_secrets=(
         "DD_API_KEY"
-        "DD_OPW_API_KEY"
-        "DD_OP_PIPELINE_ID"
         "DOCKERHUB_USER"
         "DOCKERHUB_TOKEN"
         "SYNOLOGY_HOST"
@@ -282,10 +280,9 @@ verify_secrets() {
     fi
     
     # Required secrets
+    # Note: OPW secrets removed - OPW deployed separately
     local required_secrets=(
         "DD_API_KEY"
-        "DD_OPW_API_KEY"
-        "DD_OP_PIPELINE_ID"
         "DOCKERHUB_USER"
         "DOCKERHUB_TOKEN"
         "SYNOLOGY_HOST"

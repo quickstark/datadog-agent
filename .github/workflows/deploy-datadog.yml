@@ -6,7 +6,7 @@
 # - DOCKERHUB_USER, DOCKERHUB_TOKEN
 #
 # Repository Secrets (project-specific):
-# - DD_API_KEY, DD_OPW_API_KEY, DD_OP_PIPELINE_ID
+# - DD_API_KEY (OPW secrets removed - deployed separately)
 # - Any project-specific database credentials, etc.
 
 name: Build and Deploy Datadog Agent
@@ -253,152 +253,62 @@ jobs:
             echo "📥 Pulling latest Datadog Agent image..."
             $DOCKER_CMD pull ${{ secrets.DOCKERHUB_USER }}/dd-agent:latest
             
-            # Pull the latest OPW image
-            echo "📥 Pulling latest Observability Pipelines Worker image..."
-            $DOCKER_CMD pull datadog/observability-pipelines-worker:latest
+                  # OPW image pulling removed - deployed separately
             
-            # Stop existing services gracefully
-            echo "🛑 Stopping existing Datadog services..."
-            if [ -f "docker-compose.yaml" ]; then
-              $COMPOSE_CMD down --timeout 30 || echo "No existing services to stop"
-            fi
+            # Stop existing Datadog Agent container
+            echo "🛑 Stopping existing Datadog Agent..."
+            $DOCKER_CMD stop dd-agent || echo "No existing dd-agent container to stop"
+            $DOCKER_CMD rm dd-agent || echo "No existing dd-agent container to remove"
             
             # Clean up old containers and images
             echo "🧹 Cleaning up old resources..."
             $DOCKER_CMD container prune -f
             $DOCKER_CMD image prune -f
             
-            # Update docker-compose.yaml to use the new image
-            echo "📝 Updating docker-compose configuration..."
-            cat > docker-compose.yaml << 'EOF'
-            version: '3'
+            # Deploy standalone Datadog Agent
+            echo "🚀 Starting standalone Datadog Agent..."
+            $DOCKER_CMD run -d \
+              --name dd-agent \
+              --privileged \
+              --restart unless-stopped \
+              --network host \
+              -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
+              -v /var/run/docker.sock:/var/run/docker.sock:ro \
+              -v /proc:/host/proc:ro \
+              -v /sys/fs/cgroup:/host/sys/fs/cgroup:ro \
+              -v /sys/kernel/debug:/sys/kernel/debug \
+              -v /etc/passwd:/etc/passwd:ro \
+              -v /volume1/@docker/containers:/var/lib/docker/containers:ro \
+              -v /volume1/docker/datadog-agent/datadog.yaml:/etc/datadog-agent/datadog.yaml:ro \
+              -v /volume1/docker/datadog-agent/system-probe.yaml:/etc/datadog-agent/system-probe.yaml:ro \
+              -v /volume1/docker/datadog-agent/conf.d:/etc/datadog-agent/conf.d:ro \
+              --cap-add SYS_ADMIN \
+              --cap-add SYS_RESOURCE \
+              --cap-add SYS_PTRACE \
+              --cap-add NET_ADMIN \
+              --cap-add NET_BROADCAST \
+              --cap-add NET_RAW \
+              --cap-add IPC_LOCK \
+              --cap-add CHOWN \
+              --security-opt apparmor:unconfined \
+              --label "deployment.timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+              --label "deployment.source=github-actions" \
+              --label "deployment.commit=${{ github.sha }}" \
+              --label "deployment.repository=${{ github.repository }}" \
+              ${{ secrets.DOCKERHUB_USER }}/dd-agent:latest
             
-            services:
-              dd-agent:
-                image: ${{ secrets.DOCKERHUB_USER }}/dd-agent:latest
-                container_name: dd-agent
-                privileged: true
-                networks:
-                  - dd-net
-                ports:
-                  - "8125:8125/udp"
-                  - "8126:8126/tcp"
-                  - "2055:2055/udp"
-                  - "2056:2056/udp"
-                  - "4739:4739/udp"
-                  - "6343:6343/udp"
-                  - "514:514/udp"
-                environment:
-                  - DD_API_KEY=${{ secrets.DD_API_KEY }}
-                  - DD_SITE=datadoghq.com
-                  - DD_HOSTNAME=Synology
-                  - DD_APM_ENABLED=true
-                  - DD_LOGS_ENABLED=true
-                  - DD_PROCESS_AGENT_ENABLED=true
-                  - DD_SYSTEM_PROBE_NETWORK_ENABLED=true
-                  - DD_PROCESS_CONFIG_PROCESS_COLLECTION_ENABLED=true
-                  - DD_PROCESS_CONFIG_CONTAINER_COLLECTION_ENABLED=true
-                  - DD_LOGS_CONFIG_LOGS_DD_URL=http://dd-opw:8282
-                  - DD_LOGS_CONFIG_USE_HTTP=true
-                  - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
-                  - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
-                  - DD_ENABLE_METADATA_COLLECTION=true
-                  - DD_LOG_LEVEL=info
-                  - DD_CMD_PORT=5002
-                  - DD_EXPVAR_PORT=5003
-                  - DD_APM_DD_URL=http://192.168.1.100:3835
-                  - DD_APM_NON_LOCAL_TRAFFIC=true
-                  - DD_APM_ENV=dev
-                  - DD_INVENTORIES_CONFIGURATION_ENABLED=true
-                  - DD_REMOTE_UPDATES=true
-                  - DD_TAGS=env:dev,deployment:synology,version:${{ github.sha }}
-                                 volumes:
-                   - /var/run/docker.sock:/var/run/docker.sock:ro
-                   - /proc:/host/proc:ro
-                   - /sys/fs/cgroup:/host/sys/fs/cgroup:ro
-                   - /sys/kernel/debug:/sys/kernel/debug
-                   - /etc/passwd:/etc/passwd:ro
-                   - /volume1/@docker/containers:/var/lib/docker/containers:ro
-                   # Configuration files from GitHub repo
-                   - /volume1/docker/datadog-agent/datadog.yaml:/etc/datadog-agent/datadog.yaml:ro
-                   - /volume1/docker/datadog-agent/system-probe.yaml:/etc/datadog-agent/system-probe.yaml:ro
-                   - /volume1/docker/datadog-agent/conf.d:/etc/datadog-agent/conf.d:ro
-                cap_add:
-                  - SYS_ADMIN
-                  - SYS_RESOURCE
-                  - SYS_PTRACE
-                  - NET_ADMIN
-                  - NET_BROADCAST
-                  - NET_RAW
-                  - IPC_LOCK
-                  - CHOWN
-                security_opt:
-                  - apparmor:unconfined
-                restart: unless-stopped
-                labels:
-                  - "deployment.timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-                  - "deployment.source=github-actions"
-                  - "deployment.commit=${{ github.sha }}"
-                  - "deployment.repository=${{ github.repository }}"
-            
-              dd-opw:
-                image: datadog/observability-pipelines-worker:latest
-                container_name: dd-opw
-                networks:
-                  - dd-net
-                ports:
-                  - "8282:8282/tcp"
-                  - "8686:8686/tcp"
-                environment:
-                  - DD_API_KEY=${{ secrets.DD_OPW_API_KEY }}
-                  - DD_OP_PIPELINE_ID=${{ secrets.DD_OP_PIPELINE_ID }}
-                  - DD_SITE=datadoghq.com
-                  - DD_OP_SOURCE_DATADOG_AGENT_ADDRESS=0.0.0.0:8282
-                  - DD_OP_CONFIG_SOURCE=datadog
-                  - DD_LOG_LEVEL=debug
-                  - RUST_LOG=info,observability_pipelines_worker=debug,vector=debug
-                  - DD_OP_API_ENABLED=true
-                  - DD_OP_API_ADDRESS=0.0.0.0:8686
-                volumes:
-                  - opw-data:/var/lib/datadog/observability-pipelines-worker
-                restart: unless-stopped
-                command: ["run"]
-                labels:
-                  - "deployment.timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-                  - "deployment.source=github-actions"
-                  - "deployment.commit=${{ github.sha }}"
-            
-            networks:
-              dd-net:
-                driver: bridge
-            
-            volumes:
-              opw-data:
-            EOF
-            
-            # Start the services
-            echo "🚀 Starting Datadog services..."
-            $COMPOSE_CMD up -d
-            
-            # Wait for services to be ready
-            echo "⏳ Waiting for services to start..."
+            # Wait for service to be ready
+            echo "⏳ Waiting for Datadog Agent to start..."
             sleep 30
             
-            # Verify services are running
-            echo "🔍 Verifying service status..."
-            if $COMPOSE_CMD ps | grep -q "dd-agent.*Up"; then
+            # Verify service is running
+            echo "🔍 Verifying Datadog Agent status..."
+            if $DOCKER_CMD ps | grep -q "dd-agent.*Up"; then
               echo "✅ Datadog Agent is running"
             else
               echo "❌ Datadog Agent failed to start"
-              $COMPOSE_CMD logs dd-agent
+              $DOCKER_CMD logs dd-agent
               exit 1
-            fi
-            
-            if $COMPOSE_CMD ps | grep -q "dd-opw.*Up"; then
-              echo "✅ Observability Pipelines Worker is running"
-            else
-              echo "⚠️  OPW may still be starting up"
-              $COMPOSE_CMD logs dd-opw --tail 20
             fi
             
             # Health check
@@ -409,23 +319,16 @@ jobs:
               echo "✅ Datadog Agent health check passed"
             else
               echo "⚠️  Datadog Agent health check failed - checking logs..."
-              $COMPOSE_CMD logs dd-agent --tail 20
-            fi
-            
-            # Check if OPW API is responding
-            if curl -f http://localhost:8686/api/v1/health 2>/dev/null; then
-              echo "✅ OPW API health check passed"
-            else
-              echo "⚠️  OPW API not responding yet (may still be starting)"
+              $DOCKER_CMD logs dd-agent --tail 20
             fi
             
             # Show final status
             echo "📊 Final service status:"
-            $COMPOSE_CMD ps
+            $DOCKER_CMD ps --filter "name=dd-agent"
             
             echo "🎉 Datadog Agent deployment completed successfully!"
             echo "📍 Agent Status: http://localhost:5002/status"
-            echo "📍 OPW API: http://localhost:8686"
+            echo "📍 Agent sends logs to OPW at: http://dd-opw:8282 (deployed separately)"
       
       # Mark deployment in Datadog (only for main branch)
       - name: Mark Deployment in Datadog

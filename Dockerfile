@@ -17,6 +17,7 @@
         DD_APM_ENABLED=true \
         DD_LOGS_ENABLED=true \
         DD_PROCESS_AGENT_ENABLED=true \
+        DD_SYSTEM_PROBE_NETWORK_ENABLED=true \
         DD_PROCESS_CONFIG_PROCESS_COLLECTION_ENABLED=true \
         DD_PROCESS_CONFIG_CONTAINER_COLLECTION_ENABLED=true \
         DD_LOGS_CONFIG_LOGS_DD_URL=http://dd-opw:8282 \
@@ -45,7 +46,7 @@
 # - /volume1/docker/datadog-agent/conf.d:/etc/datadog-agent/conf.d:ro
 
     # Expose all ports to match docker-compose configuration
-    EXPOSE 8125/udp 8126 5002 5003 514/udp 
+    EXPOSE 8125/udp 8126/tcp 2055/udp 2056/udp 4739/udp 6343/udp 514/udp 5002/tcp 5003/tcp 
 
     # Set healthcheck
     HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD ["/opt/datadog-agent/bin/agent/agent", "health"]
@@ -59,3 +60,9 @@
     # - /volume1/@docker/containers:/var/lib/docker/containers:ro (adjust path as needed)
     #
     # Container should be run with --privileged flag for full functionality
+    # Required capabilities when not using --privileged:
+    # --cap-add SYS_ADMIN --cap-add SYS_RESOURCE --cap-add SYS_PTRACE
+    # --cap-add NET_ADMIN --cap-add NET_BROADCAST --cap-add NET_RAW
+    # --cap-add IPC_LOCK --cap-add CHOWN
+    # Required security options:
+    # --security-opt apparmor:unconfined

@@ -177,8 +177,8 @@ validate_env_file() {
     # Required Datadog Agent variables
     local required_vars=(
         "DD_API_KEY"
-        "DD_OPW_API_KEY"
-        "DD_OP_PIPELINE_ID"
+        # "DD_OPW_API_KEY" - removed, OPW deployed separately
+        # "DD_OP_PIPELINE_ID" - removed, OPW deployed separately
         "DOCKERHUB_USER"
         "DOCKERHUB_TOKEN"
         "SYNOLOGY_HOST"
@@ -375,15 +375,15 @@ show_post_deployment_info() {
     echo -e "${CYAN}What happens next:${NC}"
     echo "  1. GitHub Actions will build your custom Datadog Agent Docker image"
     echo "  2. Configuration files will be copied to your Synology NAS"
-    echo "  3. Agent and OPW services will be deployed via docker-compose"
+    echo "  3. Datadog Agent will be deployed as standalone container"
     echo "  4. Health checks will verify the deployment"
     echo "  5. Deployment will be marked in Datadog for tracking"
     echo
     echo -e "${CYAN}Monitoring:${NC}"
     echo "  • Watch GitHub Actions for build progress"
-    echo "  • Check Synology NAS for running containers: dd-agent, dd-opw"
+    echo "  • Check Synology NAS for running containers: dd-agent"
     echo "  • Verify agent status: http://your-synology:5002/status"
-    echo "  • Check OPW API: http://your-synology:8686"
+    echo "  • Agent sends logs to OPW at: http://your-synology:8282 (deployed separately)"
     echo
     echo -e "${CYAN}Datadog Monitoring:${NC}"
     echo "  • Infrastructure metrics should appear in Datadog"
@@ -396,7 +396,7 @@ show_post_deployment_info() {
     echo "  • Check GitHub Actions logs for build issues"
     echo "  • SSH to Synology and check container logs:"
     echo "    - docker-compose logs dd-agent"
-    echo "    - docker-compose logs dd-opw"
+    echo "    - docker logs dd-agent"
     echo "  • Verify configuration files in /volume1/docker/datadog-agent/"
     echo "  • Check Datadog Agent status: docker exec dd-agent datadog-agent status"
     echo "  • Validate API key and site configuration"

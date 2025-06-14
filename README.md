@@ -1,6 +1,6 @@
-# Datadog Agent for Synology DS923+ (AMD Ryzen)
+# Standalone Datadog Agent for Synology DS923+ (AMD Ryzen)
 
-This repository contains configuration and build scripts for deploying the Datadog Agent on Synology DS923+ with AMD Ryzen R1600 processor. The setup includes infrastructure monitoring, container monitoring, and PostgreSQL integration.
+This repository contains configuration and build scripts for deploying a standalone Datadog Agent on Synology DS923+ with AMD Ryzen R1600 processor. The setup includes infrastructure monitoring, container monitoring, and database integrations (PostgreSQL, MongoDB, SNMP).
 
 ## Key Features
 
@@ -134,61 +134,59 @@ To verify that the Datadog Agent is working correctly:
 
 This repository contains a custom Datadog Agent configuration with PostgreSQL and MongoDB monitoring capabilities.
 
-## Running with Docker Compose
+## Running as Standalone Container
 
-To run using docker-compose (recommended):
-
-```bash
-docker-compose up -d
-```
-
-## Running with Docker (Functionally Equivalent)
-
-If you prefer to run the container directly with Docker instead of docker-compose, use the following command to achieve the same functionality:
+This agent deploys as a single container with all environment variables pre-configured:
 
 ```bash
 # Build the custom image first
 docker build -t dd-agent:latest .
 
-# Run the container with all necessary configurations
+# Run the standalone container
 docker run -d \
   --name dd-agent \
   --privileged \
   --restart unless-stopped \
-  -p 8125:8125/udp \
-  -p 8126:8126/tcp \
+  --network host \
   -e DD_API_KEY=${DD_API_KEY} \
-  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
   -v /proc:/host/proc:ro \
   -v /sys/fs/cgroup:/host/sys/fs/cgroup:ro \
+  -v /sys/kernel/debug:/sys/kernel/debug \
   -v /etc/passwd:/etc/passwd:ro \
   -v /volume1/@docker/containers:/var/lib/docker/containers:ro \
-  --network dd-net \
+  -v /volume1/docker/datadog-agent/datadog.yaml:/etc/datadog-agent/datadog.yaml:ro \
+  -v /volume1/docker/datadog-agent/system-probe.yaml:/etc/datadog-agent/system-probe.yaml:ro \
+  -v /volume1/docker/datadog-agent/conf.d:/etc/datadog-agent/conf.d:ro \
   dd-agent:latest
 ```
 
 ### Important Notes:
 
-- **Privileged Mode**: The `--privileged` flag is required for the agent to access system information
+- **Privileged Mode**: The `--privileged` flag is required for system monitoring
+- **Host Network**: Uses `--network host` for complete network monitoring
 - **Docker Socket**: Mount `/var/run/docker.sock` to enable container monitoring
 - **Host Filesystem**: Mount `/proc`, `/sys/fs/cgroup`, and `/etc/passwd` for system monitoring
 - **Container Logs**: Adjust the `/volume1/@docker/containers` path to match your Docker containers directory
-- **Network**: Create the `dd-net` network first: `docker network create dd-net`
-- **API Key**: Replace the DD_API_KEY with your actual Datadog API key
+- **API Key**: Replace `DD_API_KEY` with your actual Datadog API key
+- **Log Pipeline**: Agent sends logs to OPW at `http://dd-opw:8282` (deploy OPW separately)
 
 ### Environment Variables Included:
 
-The Dockerfile now includes all environment variables from the docker-compose configuration:
-- DD_SITE, DD_HOSTNAME, DD_APM_ENABLED, DD_LOGS_ENABLED
-- DD_PROCESS_AGENT_ENABLED, DD_PROCESS_CONFIG_*
-- DD_LOGS_CONFIG_*, DD_DOGSTATSD_NON_LOCAL_TRAFFIC
-- DD_ENABLE_METADATA_COLLECTION, DD_LOG_LEVEL
-- DD_CMD_PORT, DD_EXPVAR_PORT, DD_APM_*
-- DD_INVENTORIES_CONFIGURATION_ENABLED, DD_TAGS
+The Dockerfile includes all required environment variables:
+- **Core**: DD_SITE, DD_HOSTNAME, DD_API_KEY (from runtime)
+- **APM**: DD_APM_ENABLED, DD_APM_NON_LOCAL_TRAFFIC, DD_APM_DD_URL
+- **Logs**: DD_LOGS_ENABLED, DD_LOGS_CONFIG_LOGS_DD_URL (points to OPW)
+- **Process**: DD_PROCESS_AGENT_ENABLED, DD_PROCESS_CONFIG_*
+- **Network**: DD_SYSTEM_PROBE_NETWORK_ENABLED, DD_DOGSTATSD_NON_LOCAL_TRAFFIC
+- **Metadata**: DD_ENABLE_METADATA_COLLECTION, DD_INVENTORIES_CONFIGURATION_ENABLED
+- **Tags**: DD_TAGS=env:dev,deployment:synology
 
-### Port Mappings:
+### Exposed Ports:
 
 - 8125/udp: DogStatsD
-- 8126/tcp: APM Traces
-- 5002/tcp: Command Port
+- 8126/tcp: APM Traces  
+- 2055/udp, 2056/udp, 4739/udp, 6343/udp: NetFlow/sFlow
+- 514/udp: Syslog
+- 5002/tcp: Agent Command Port
 - 5003/tcp: Expvar Port
