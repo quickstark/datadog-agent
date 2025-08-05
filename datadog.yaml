@@ -87,6 +87,9 @@ process_config:
     enabled: true
   container_collection:
     enabled: true
+  # Disable network connections collection since system_probe network_config is disabled
+  network:
+    enabled: false
 
 ####################################
 ## Network Configuration ###########
@@ -135,6 +138,34 @@ network_devices:
 
 listeners:
   - name: docker
+
+# Container discovery and autodiscovery settings
+container_collect_all: true
+
+# Enable container image collection
+container_image_enabled: true
+
+# Container lifecycle events
+container_lifecycle_events: true
+
+# Collect container labels as tags
+collect_ec2_tags: false
+collect_gce_tags: false
+docker_labels_as_tags:
+  com.docker.compose.service: service
+  com.docker.compose.project: project
+  traefik.frontend.rule: traefik_rule
+  traefik.backend: traefik_backend
+
+# Enable autodiscovery for containers
+ad_config_poll_interval: 10s
+
+# Container monitoring optimizations for Synology
+container_exclude: 
+  - "name:dd-agent"  # Exclude Datadog agent from monitoring itself
+
+container_include:
+  - ".*"  # Include all other containers
 
 # Keep the additional checksd configuration
 additional_checksd: /etc/datadog-agent/checks.d

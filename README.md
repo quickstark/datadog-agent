@@ -1,12 +1,11 @@
 # Standalone Datadog Agent for Synology DS923+ (AMD Ryzen)
 
-This repository provides a **fully automated GitOps deployment** of a standalone Datadog Agent on Synology DS923+ with AMD Ryzen R1600 processor. The setup includes infrastructure monitoring, container monitoring, and database integrations with **automated deployment via GitHub Actions**.
+This repository provides a **automated deployment via Git Actions** of a standalone Datadog Agent on Synology DS923+ with AMD Ryzen R1600 processor. The setup includes examples of various aspects of monitoring containerized workloads in the datadog.yaml.
 
 ## 🎯 Overview
 
-- **100% GitOps Workflow** - Push code to deploy automatically
-- **Standalone Docker Container** - No docker-compose complexity
-- **Pre-configured Monitoring** - Infrastructure, containers, PostgreSQL, MongoDB, SNMP
+- **Git Actions Workflow** - Push code to deploy automatically
+- **Conf Examples** - Infrastructure, containers, PostgreSQL, MongoDB, SNMP
 - **Log Pipeline Integration** - Sends logs to Observability Pipelines Worker (deployed separately)
 - **Platform Optimized** - Built for AMD Ryzen R1600 (x86_64/AMD64 architecture)
 - **Health Monitoring** - Automatic deployment verification and rollback

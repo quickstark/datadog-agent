@@ -1,0 +1,49 @@
+init_config:
+
+instances:
+  # Docker daemon configuration
+  - url: "unix://var/run/docker.sock"
+    
+    # Enable collection of container metrics
+    collect_container_size: true
+    collect_container_count: true
+    collect_volume_count: true
+    collect_images_stats: true
+    collect_image_size: true
+    collect_disk_stats: true
+    
+    # Enable performance metrics
+    collect_exit_codes: true
+    health_service_check_whitelist:
+      - "docker"
+    
+    # Tag configuration for better organization
+    tags:
+      - "docker_host:synology"
+      - "env:dev"
+      - "deployment:synology"
+    
+    # Container filtering (optional - collect from all containers by default)
+    # You can uncomment and modify these if you want to filter specific containers
+    # exclude:
+    #   - "name:dd-agent"  # Exclude the Datadog agent itself
+    
+    # include:
+    #   - ".*"  # Include all containers (default behavior)
+    
+    # Performance tuning for Synology
+    timeout: 10
+    tls: false
+    
+    # Collect additional container metadata
+    collect_labels_as_tags:
+      - "com.docker.compose.service"
+      - "com.docker.compose.project"
+      - "traefik.frontend.rule"
+      - "traefik.backend"
+    
+    # Performance metrics collection
+    performance_tags:
+      - "container_name"
+      - "image_name"
+      - "image_tag" 
