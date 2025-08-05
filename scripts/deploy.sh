@@ -269,49 +269,101 @@ check_git_status() {
         echo
         
         if prompt_yes_no "Would you like to add and commit all changes?"; then
-            return 0  # Proceed with git operations
+            return 0  # Proceed with git operations (commit + push)
         else
             print_error "Please commit your changes before deploying"
             exit 1
         fi
     else
         print_success "Working directory is clean"
-        return 1  # No git operations needed
+        
+        # Check if we need to push to trigger deployment
+        if prompt_yes_no "Working directory is clean. Trigger deployment anyway?" "y"; then
+            return 2  # Proceed with deployment trigger (push only)
+        else
+            print_warning "Skipping deployment trigger"
+            return 1  # No git operations needed
+        fi
     fi
 }
 
 perform_git_operations() {
-    print_step "Performing git operations..."
+    local operation_type="${1:-commit_and_push}"
     
-    # Add all changes
-    print_step "Adding all changes..."
-    git add .
-    
-    # Show what will be committed
-    echo -e "${YELLOW}Files to be committed:${NC}"
-    git diff --cached --name-status
-    echo
-    
-    # Get commit message
-    local default_message="Deploy: Update Datadog Agent configuration and deployment"
-    read -p "Enter commit message [$default_message]: " commit_message
-    commit_message="${commit_message:-$default_message}"
-    
-    # Commit changes
-    print_step "Committing changes..."
-    git commit -m "$commit_message"
+    if [[ "$operation_type" == "commit_and_push" ]]; then
+        print_step "Performing git operations (commit + push)..."
+        
+        # Add all changes
+        print_step "Adding all changes..."
+        git add .
+        
+        # Show what will be committed
+        echo -e "${YELLOW}Files to be committed:${NC}"
+        git diff --cached --name-status
+        echo
+        
+        # Get commit message
+        local default_message="Deploy: Update Datadog Agent configuration and deployment"
+        read -p "Enter commit message [$default_message]: " commit_message
+        commit_message="${commit_message:-$default_message}"
+        
+        # Commit changes
+        print_step "Committing changes..."
+        git commit -m "$commit_message"
+    else
+        print_step "Preparing to trigger deployment..."
+    fi
     
     # Check current branch
     local current_branch=$(git branch --show-current)
     print_step "Current branch: $current_branch"
     
-    # Push changes
-    if prompt_yes_no "Push changes to origin/$current_branch?" "y"; then
-        print_step "Pushing to origin/$current_branch..."
-        git push origin "$current_branch"
-        print_success "Changes pushed successfully"
+    # Check if we're ahead of remote or if we need to push
+    local push_needed=false
+    local status_message=""
+    
+    if git rev-parse --verify "origin/$current_branch" >/dev/null 2>&1; then
+        local ahead=$(git rev-list --count "origin/$current_branch..$current_branch")
+        local behind=$(git rev-list --count "$current_branch..origin/$current_branch")
+        
+        if [[ $ahead -gt 0 ]]; then
+            push_needed=true
+            status_message="$ahead commits ahead of origin/$current_branch"
+        elif [[ $operation_type == "push_only" ]]; then
+            # Create empty commit to trigger deployment
+            print_step "Creating empty commit to trigger deployment..."
+            git commit --allow-empty -m "Deploy: Trigger deployment workflow"
+            push_needed=true
+            status_message="Empty commit created to trigger deployment"
+        fi
+        
+        if [[ $behind -gt 0 ]]; then
+            print_warning "Your branch is $behind commits behind origin/$current_branch"
+            if prompt_yes_no "Pull latest changes first?"; then
+                git pull origin "$current_branch"
+            fi
+        fi
     else
-        print_warning "Skipping git push - you'll need to push manually"
+        push_needed=true
+        status_message="New branch - first push"
+    fi
+    
+    if [[ "$push_needed" == "true" ]]; then
+        echo -e "${YELLOW}$status_message${NC}"
+        if prompt_yes_no "Push to origin/$current_branch?" "y"; then
+            print_step "Pushing to origin/$current_branch..."
+            git push origin "$current_branch"
+            print_success "Changes pushed successfully - GitHub workflow should trigger"
+        else
+            print_warning "Skipping git push - you'll need to push manually to trigger deployment"
+        fi
+    else
+        print_warning "No push needed - branch is up to date with origin"
+        if prompt_yes_no "Create empty commit to force deployment trigger?"; then
+            git commit --allow-empty -m "Deploy: Force deployment workflow trigger"
+            git push origin "$current_branch"
+            print_success "Empty commit pushed - GitHub workflow should trigger"
+        fi
     fi
     
     echo
@@ -392,10 +444,10 @@ show_post_deployment_info() {
     echo -e "${CYAN}Troubleshooting:${NC}"
     echo "  • Check GitHub Actions logs for build issues"
     echo "  • SSH to Synology and check container logs:"
-    echo "    - docker-compose logs dd-agent"
     echo "    - docker logs dd-agent"
+    echo "    - docker exec dd-agent datadog-agent status"
     echo "  • Verify configuration files in /volume1/docker/datadog-agent/"
-    echo "  • Check Datadog Agent status: docker exec dd-agent datadog-agent status"
+    echo "  • Check container metrics collection: docker exec dd-agent datadog-agent check docker"
     echo "  • Validate API key and site configuration"
     echo
 }
@@ -414,9 +466,17 @@ main() {
     validate_env_file "$env_file"
     
     # Check git status and perform operations if needed
-    if check_git_status; then
-        perform_git_operations
+    check_git_status
+    local git_status_result=$?
+    
+    if [[ $git_status_result -eq 0 ]]; then
+        # Uncommitted changes - commit and push
+        perform_git_operations "commit_and_push"
+    elif [[ $git_status_result -eq 2 ]]; then
+        # Clean working directory but user wants to trigger deployment
+        perform_git_operations "push_only"
     fi
+    # If git_status_result is 1, user chose not to trigger deployment
     
     # Upload secrets to GitHub
     upload_secrets "$env_file"
