@@ -1,10 +1,8 @@
-init_config:
-
-instances:
-  - port: 514
-    transport: udp
+logs:
+  - type: tcp
+    port: 514
+    service: unifi
+    source: syslog
     tags:
-      - source:syslog
-      - service:unifi
       - location:argyle
-      - facility:home 
+      - facility:home

@@ -23,7 +23,7 @@ instances:
     collect_statement_metrics: true
     
     # Schema metrics (recommended for full DBM experience)
-    collect_schema_size: true
+    collect_schemas: true
     
     # Collect table count to monitor table growth
     collect_table_count: true

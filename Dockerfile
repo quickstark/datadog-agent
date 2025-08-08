@@ -35,6 +35,7 @@
             DD_APM_ENV=dev \
             DD_INVENTORIES_CONFIGURATION_ENABLED=true \
             DD_REMOTE_UPDATES=true \
+            DD_SYSTEM_PROBE_ENABLED=true \
             DD_TAGS=env:dev,deployment:synology \
             PUID=1026 \
             PGID=100 \

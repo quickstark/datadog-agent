@@ -103,8 +103,8 @@ process_config:
 
 # Disable advanced network monitoring features for kernel compatibility
 system_probe_config:
-  # Disable the main network tracer module that requires newer kernels
-  enabled: false
+  # Enable system-probe so runtime security can start; keep network tracer disabled below
+  enabled: true
 
 runtime_security_config:
   ## @param enabled - boolean - optional - default: false
