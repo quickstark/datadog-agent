@@ -12,6 +12,7 @@ instances:
     # TLS options for FreeTDS
     encrypt: false
     trust_server_certificate: true
+    tds_version: 8.0
     # Optional: tags
     tags:
       - 'service:fastapi'

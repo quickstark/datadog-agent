@@ -45,7 +45,7 @@
         # Install PostgreSQL and SQL Server (ODBC via FreeTDS) dependencies in the final stage
         RUN pip3 install --no-cache-dir psycopg2-binary \
          && apt-get update \
-         && apt-get install -y --no-install-recommends ca-certificates curl gnupg unixodbc unixodbc-dev freetds-dev freetds-bin tdsodbc \
+         && apt-get install -y --no-install-recommends unixodbc unixodbc-dev freetds-dev freetds-bin tdsodbc \
          && pip3 install --no-cache-dir pyodbc \
          && rm -rf /var/lib/apt/lists/*
 
