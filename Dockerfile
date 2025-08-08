@@ -42,15 +42,10 @@
             TZ=America/Chicago \
             ACCEPT_EULA=Y
 
-        # Install PostgreSQL and SQL Server (ODBC) dependencies in the final stage
+        # Install PostgreSQL and SQL Server (ODBC via FreeTDS) dependencies in the final stage
         RUN pip3 install --no-cache-dir psycopg2-binary \
          && apt-get update \
-         && apt-get install -y --no-install-recommends curl gnupg apt-transport-https unixodbc unixodbc-dev \
-         && dist="$(. /etc/os-release && echo "$VERSION_CODENAME")" \
-         && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
-         && echo "deb [arch=amd64] https://packages.microsoft.com/debian/${dist}/prod ${dist} main" > /etc/apt/sources.list.d/microsoft-prod.list \
-         && apt-get update \
-         && apt-get install -y --no-install-recommends msodbcsql18 mssql-tools18 \
+         && apt-get install -y --no-install-recommends ca-certificates curl gnupg unixodbc unixodbc-dev freetds-dev freetds-bin tdsodbc \
          && pip3 install --no-cache-dir pyodbc \
          && rm -rf /var/lib/apt/lists/*
 
