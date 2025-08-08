@@ -1,0 +1,29 @@
+##########################################
+## Security Agent Runtime Configuration ##
+##                                      ##
+## Settings to send logs to Datadog are ##
+## fetched from section `logs_config`   ##
+## in datadog-agent.yaml                ##
+##########################################
+
+runtime_security_config:
+  ## @param enabled - boolean - optional - default: false
+  ## Set to true to enable the Security Runtime Module.
+  #
+  enabled: true
+
+compliance_config:
+  ## @param enabled - boolean - optional - default: false
+  ## Set to true to enable Linux compliance benchmarks.
+  #
+  enabled: true
+
+  ## @param host_benchmarks - custom object - optional
+  ## Linux compliance benchmarks.
+  #
+  host_benchmarks:
+    ## @param enabled - boolean - optional - default: false
+    ## Set to true to enable Linux compliance benchmarks.
+    #
+    enabled: true
+

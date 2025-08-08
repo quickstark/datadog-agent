@@ -1,0 +1,13 @@
+##########################################
+## Security Agent Runtime Configuration ##
+##                                      ##
+## Settings to send logs to Datadog are ##
+## fetched from section `logs_config`   ##
+## in datadog-agent.yaml                ##
+##########################################
+
+runtime_security_config:
+  ## @param enabled - boolean - optional - default: false
+  ## Set to true to enable full Workload Protection.
+  #
+  enabled: true

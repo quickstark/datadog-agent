@@ -72,11 +72,11 @@ logs_enabled: true
 # Main logs configuration
 logs_config:
   use_http: true
-  logs_dd_url: "http://192.168.1.100:8282"
+  logs_dd_url: http://192.168.1.100:8282
   use_compression: true
   compression_level: 6
-  batch_wait: 5  # seconds between batches
-  container_collect_all: true  # This enables automatic log collection from all containers
+  batch_wait: 5 # seconds between batches
+  container_collect_all: true # This enables automatic log collection from all containers
 
 ####################################
 ## Process Configuration ##########
@@ -106,23 +106,34 @@ system_probe_config:
   # Disable the main network tracer module that requires newer kernels
   enabled: false
 
+runtime_security_config:
+  ## @param enabled - boolean - optional - default: false
+  ## Set to true to enable the Security Runtime Module.
+  #
+  enabled: true
+
+compliance_config:
+  ## @param enabled - boolean - optional - default: false
+  ## Set to true to enable CIS benchmarks for CSPM.
+  #
+  enabled: true
+
 # Disable network config to prevent loading network monitoring modules
 network_config:
   # Disable the main network monitoring that requires newer kernels
   enabled: false
   # Ignore conntrack failures for compatibility with older kernels
   ignore_conntrack_init_failure: true
-  
-# Only enable system probe for traceroute functionality
-system_probe:
-  enabled: true
+
+## Note: Remove deprecated top-level `system_probe` block. System probe is
+## controlled via `system_probe_config` and `network_config` above.
 
 network_devices:
   netflow:
     enabled: true
     listeners:
-      - flow_type: netflow9   # choices: netflow5, netflow9, ipfix, sflow5
-        port: 2055            # devices need to be configured to the same port number
+      - flow_type: netflow9 # choices: netflow5, netflow9, ipfix, sflow5
+        port: 2055 # devices need to be configured to the same port number
       - flow_type: netflow5
         port: 2056
       - flow_type: ipfix
@@ -161,11 +172,11 @@ docker_labels_as_tags:
 ad_config_poll_interval: 10s
 
 # Container monitoring optimizations for Synology
-container_exclude: 
-  - "name:dd-agent"  # Exclude Datadog agent from monitoring itself
+container_exclude:
+  - name:dd-agent # Exclude Datadog agent from monitoring itself
 
 container_include:
-  - ".*"  # Include all other containers
+  - .* # Include all other containers
 
 # Keep the additional checksd configuration
 additional_checksd: /etc/datadog-agent/checks.d
