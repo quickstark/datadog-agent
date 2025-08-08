@@ -1,0 +1,18 @@
+init_config:
+instances:
+  - dbm: true
+    # SQL Server connection (Linux agent): use ODBC connector
+    host: '192.168.1.100'
+    port: 9003
+    username: 'datadog'
+    # For dev/testing, set the cleartext password or configure the Agent secrets backend
+    password: 'Vall123@'
+    connector: odbc
+    driver: 'ODBC Driver 18 for SQL Server'
+    # Disable TLS if using self-signed or no encryption
+    encryption: false
+    trust_server_certificate: true
+    # Optional: tags
+    tags:
+      - 'service:fastapi'
+      - 'env:dev'

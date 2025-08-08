@@ -39,10 +39,20 @@
             DD_TAGS=env:dev,deployment:synology \
             PUID=1026 \
             PGID=100 \
-            TZ=America/Chicago
+            TZ=America/Chicago \
+            ACCEPT_EULA=Y
 
-        # Install PostgreSQL dependencies in the final stage
-        RUN pip3 install --no-cache-dir psycopg2-binary
+        # Install PostgreSQL and SQL Server (ODBC) dependencies in the final stage
+        RUN pip3 install --no-cache-dir psycopg2-binary \
+         && apt-get update \
+         && apt-get install -y --no-install-recommends curl gnupg apt-transport-https unixodbc unixodbc-dev \
+         && dist="$(. /etc/os-release && echo "$VERSION_CODENAME")" \
+         && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+         && echo "deb [arch=amd64] https://packages.microsoft.com/debian/${dist}/prod ${dist} main" > /etc/apt/sources.list.d/microsoft-prod.list \
+         && apt-get update \
+         && apt-get install -y --no-install-recommends msodbcsql18 mssql-tools18 \
+         && pip3 install --no-cache-dir pyodbc \
+         && rm -rf /var/lib/apt/lists/*
 
         # Note: Configuration files are now managed via volume mounts during deployment
     # This allows for easier updates without rebuilding the Docker image
@@ -52,7 +62,7 @@
     # - /volume1/docker/datadog-agent/conf.d:/etc/datadog-agent/conf.d:ro
 
         # Expose all ports to match docker-compose configuration
-        EXPOSE 8125/udp 8126/tcp 2055/udp 2056/udp 4739/udp 6343/udp 514/udp 5002/tcp 5003/tcp 
+        EXPOSE 8125/udp 8126/tcp 2055/udp 2056/udp 4739/udp 6343/udp 514/udp 514/tcp 5002/tcp 5003/tcp 
 
         # Set healthcheck
         HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD ["/opt/datadog-agent/bin/agent/agent", "health"]
