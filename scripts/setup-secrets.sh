@@ -133,6 +133,34 @@ validate_required_secrets() {
         "SYNOLOGY_USER"
     )
     
+    # Database monitoring secrets (required for active integrations)
+    local database_secrets=(
+        "POSTGRES_HOST"
+        "POSTGRES_PORT" 
+        "POSTGRES_USER"
+        "POSTGRES_PASSWORD"
+        "POSTGRES_DATABASE"
+        "SQLSERVER_HOST"
+        "SQLSERVER_PORT"
+        "SQLSERVER_USER"
+        "SQLSERVER_PASSWORD"
+    )
+    
+    # SNMP monitoring secrets (required for network device monitoring)
+    local snmp_secrets=(
+        "SNMP_COMMUNITY_ROUTER"
+        "SNMP_COMMUNITY_PRINTER"
+        "ROUTER_IP"
+        "PRINTER_IP"
+        "SNMP_PORT"
+        "SNMP_VERSION"
+        "SNMP_TIMEOUT"
+        "SNMP_RETRIES"
+    )
+    
+    # Combine all required secrets
+    required_secrets+=("${database_secrets[@]}" "${snmp_secrets[@]}")
+    
     local missing_secrets=()
     local placeholder_secrets=()
     local found_count=0
@@ -206,6 +234,34 @@ upload_secrets() {
         "SYNOLOGY_SSH_PORT"
         "SYNOLOGY_USER"
     )
+    
+    # Database monitoring secrets (required for active integrations)
+    local database_secrets=(
+        "POSTGRES_HOST"
+        "POSTGRES_PORT" 
+        "POSTGRES_USER"
+        "POSTGRES_PASSWORD"
+        "POSTGRES_DATABASE"
+        "SQLSERVER_HOST"
+        "SQLSERVER_PORT"
+        "SQLSERVER_USER"
+        "SQLSERVER_PASSWORD"
+    )
+    
+    # SNMP monitoring secrets (required for network device monitoring)
+    local snmp_secrets=(
+        "SNMP_COMMUNITY_ROUTER"
+        "SNMP_COMMUNITY_PRINTER"
+        "ROUTER_IP"
+        "PRINTER_IP"
+        "SNMP_PORT"
+        "SNMP_VERSION"
+        "SNMP_TIMEOUT"
+        "SNMP_RETRIES"
+    )
+    
+    # Combine all required secrets
+    required_secrets+=("${database_secrets[@]}" "${snmp_secrets[@]}")
     
     for secret_name in "${required_secrets[@]}"; do
         local secret_value=$(get_secret "$secret_name")
@@ -303,6 +359,34 @@ verify_secrets() {
         "SYNOLOGY_SSH_PORT"
         "SYNOLOGY_USER"
     )
+    
+    # Database monitoring secrets (required for active integrations)
+    local database_secrets=(
+        "POSTGRES_HOST"
+        "POSTGRES_PORT" 
+        "POSTGRES_USER"
+        "POSTGRES_PASSWORD"
+        "POSTGRES_DATABASE"
+        "SQLSERVER_HOST"
+        "SQLSERVER_PORT"
+        "SQLSERVER_USER"
+        "SQLSERVER_PASSWORD"
+    )
+    
+    # SNMP monitoring secrets (required for network device monitoring)
+    local snmp_secrets=(
+        "SNMP_COMMUNITY_ROUTER"
+        "SNMP_COMMUNITY_PRINTER"
+        "ROUTER_IP"
+        "PRINTER_IP"
+        "SNMP_PORT"
+        "SNMP_VERSION"
+        "SNMP_TIMEOUT"
+        "SNMP_RETRIES"
+    )
+    
+    # Combine all required secrets
+    required_secrets+=("${database_secrets[@]}" "${snmp_secrets[@]}")
     
     local verified_count=0
     

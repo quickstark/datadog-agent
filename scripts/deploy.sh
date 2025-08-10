@@ -184,6 +184,34 @@ validate_env_file() {
         "SYNOLOGY_USER"
     )
     
+    # Database monitoring variables (required for active integrations)
+    local database_vars=(
+        "POSTGRES_HOST"
+        "POSTGRES_PORT" 
+        "POSTGRES_USER"
+        "POSTGRES_PASSWORD"
+        "POSTGRES_DATABASE"
+        "SQLSERVER_HOST"
+        "SQLSERVER_PORT"
+        "SQLSERVER_USER"
+        "SQLSERVER_PASSWORD"
+    )
+    
+    # SNMP monitoring variables (required for network device monitoring)
+    local snmp_vars=(
+        "SNMP_COMMUNITY_ROUTER"
+        "SNMP_COMMUNITY_PRINTER"
+        "ROUTER_IP"
+        "PRINTER_IP"
+        "SNMP_PORT"
+        "SNMP_VERSION"
+        "SNMP_TIMEOUT"
+        "SNMP_RETRIES"
+    )
+    
+    # Combine all required variables
+    required_vars+=("${database_vars[@]}" "${snmp_vars[@]}")
+    
     # Count total variables and placeholders
     local total_vars=0
     local placeholder_vars=0
@@ -255,6 +283,120 @@ validate_env_file() {
     fi
     
     print_success "Environment file validation completed"
+    echo
+}
+
+load_env_file() {
+    local env_file="$1"
+    
+    print_step "Loading environment variables from: $env_file"
+    
+    # Set a trap to handle any errors during sourcing
+    local original_set_state="$(set +o)"
+    set +e  # Allow errors temporarily
+    
+    # Create temporary file with only valid assignments
+    local temp_env_file
+    temp_env_file=$(mktemp)
+    trap 'rm -f "$temp_env_file"' EXIT
+    
+    # Parse and clean the env file
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Skip empty lines and comments
+        if [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]]; then
+            continue
+        fi
+        
+        # Only include valid variable assignments
+        if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+            local key="${BASH_REMATCH[1]}"
+            local value="${BASH_REMATCH[2]}"
+            
+            # Remove surrounding quotes and escape special characters
+            value=$(echo "$value" | sed 's/^["'\'']\|["'\'']$//g' | sed 's/\$/\\$/g')
+            
+            echo "export ${key}=\"${value}\"" >> "$temp_env_file"
+        fi
+    done < "$env_file"
+    
+    # Source the cleaned environment file
+    if source "$temp_env_file" 2>/dev/null; then
+        print_success "Environment variables loaded successfully"
+        
+        # Count loaded variables for verification
+        local loaded_count=0
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^export[[:space:]]+([^=]+)= ]]; then
+                ((loaded_count++))
+            fi
+        done < "$temp_env_file"
+        
+        echo "  Loaded $loaded_count environment variables"
+        
+        # Verify critical variables are available
+        local critical_vars=("DD_API_KEY" "DOCKERHUB_USER" "DOCKERHUB_TOKEN" "SYNOLOGY_HOST")
+        local database_vars=("POSTGRES_HOST" "POSTGRES_USER" "POSTGRES_PASSWORD" "SQLSERVER_HOST" "SQLSERVER_USER" "SQLSERVER_PASSWORD")
+        local snmp_vars=("SNMP_COMMUNITY_ROUTER" "ROUTER_IP" "PRINTER_IP")
+        
+        local missing_vars=()
+        local missing_db_vars=()
+        local missing_snmp_vars=()
+        
+        # Check critical deployment variables
+        for var in "${critical_vars[@]}"; do
+            if [[ -z "${!var}" ]]; then
+                missing_vars+=("$var")
+            fi
+        done
+        
+        # Check database variables
+        for var in "${database_vars[@]}"; do
+            if [[ -z "${!var}" ]]; then
+                missing_db_vars+=("$var")
+            fi
+        done
+        
+        # Check SNMP variables
+        for var in "${snmp_vars[@]}"; do
+            if [[ -z "${!var}" ]]; then
+                missing_snmp_vars+=("$var")
+            fi
+        done
+        
+        # Critical deployment variables must be present
+        if [[ ${#missing_vars[@]} -gt 0 ]]; then
+            print_error "Critical deployment variables not loaded: ${missing_vars[*]}"
+            exit 1
+        else
+            print_success "All critical deployment variables are available"
+        fi
+        
+        # Database and SNMP variables are informational
+        if [[ ${#missing_db_vars[@]} -gt 0 ]]; then
+            print_warning "Missing database variables: ${missing_db_vars[*]}"
+            echo "  Database monitoring may not work properly"
+        else
+            print_success "All database monitoring variables are available"
+        fi
+        
+        if [[ ${#missing_snmp_vars[@]} -gt 0 ]]; then
+            print_warning "Missing SNMP variables: ${missing_snmp_vars[*]}"
+            echo "  SNMP monitoring may not work properly"
+        else
+            print_success "All SNMP monitoring variables are available"
+        fi
+    else
+        print_error "Failed to load environment variables from $env_file"
+        exit 1
+    fi
+    
+    # Restore original set state
+    eval "$original_set_state"
+    
+    # Clean up temp file
+    rm -f "$temp_env_file"
+    trap - EXIT
+    
     echo
 }
 
@@ -464,6 +606,9 @@ main() {
     local env_file
     env_file=$(select_env_file "$1")
     validate_env_file "$env_file"
+    
+    # Load environment variables from the validated file
+    load_env_file "$env_file"
     
     # Check git status and perform operations if needed
     check_git_status

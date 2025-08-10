@@ -212,12 +212,52 @@ jobs:
                 echo "✅ Copied conf.d configurations"
               fi
               
-              # Substitute environment variables in datadog.yaml
+              # Substitute environment variables in configuration files
+              echo "🔧 Substituting environment variables in configuration files..."
+              
+              # Datadog main configuration
               if [ -f "$DATADOG_DIR/datadog.yaml" ]; then
-                echo "🔧 Substituting environment variables in datadog.yaml..."
+                echo "  📋 Updating datadog.yaml..."
                 sed -i "s/\${DD_API_KEY}/${{ secrets.DD_API_KEY }}/g" "$DATADOG_DIR/datadog.yaml"
-                echo "✅ Environment variables substituted"
+                echo "  ✅ datadog.yaml updated"
               fi
+              
+              # PostgreSQL configuration
+              if [ -f "$DATADOG_DIR/conf.d/postgres.d/conf.yaml" ]; then
+                echo "  📋 Updating postgres.d/conf.yaml..."
+                sed -i "s/\${POSTGRES_HOST}/${{ secrets.POSTGRES_HOST }}/g" "$DATADOG_DIR/conf.d/postgres.d/conf.yaml"
+                sed -i "s/\${POSTGRES_PORT}/${{ secrets.POSTGRES_PORT }}/g" "$DATADOG_DIR/conf.d/postgres.d/conf.yaml"
+                sed -i "s/\${POSTGRES_USER}/${{ secrets.POSTGRES_USER }}/g" "$DATADOG_DIR/conf.d/postgres.d/conf.yaml"
+                sed -i "s/\${POSTGRES_PASSWORD}/${{ secrets.POSTGRES_PASSWORD }}/g" "$DATADOG_DIR/conf.d/postgres.d/conf.yaml"
+                sed -i "s/\${POSTGRES_DATABASE}/${{ secrets.POSTGRES_DATABASE }}/g" "$DATADOG_DIR/conf.d/postgres.d/conf.yaml"
+                echo "  ✅ postgres.d/conf.yaml updated"
+              fi
+              
+              # SQL Server configuration
+              if [ -f "$DATADOG_DIR/conf.d/sqlserver.d/conf.yaml" ]; then
+                echo "  📋 Updating sqlserver.d/conf.yaml..."
+                sed -i "s/\${SQLSERVER_HOST}/${{ secrets.SQLSERVER_HOST }}/g" "$DATADOG_DIR/conf.d/sqlserver.d/conf.yaml"
+                sed -i "s/\${SQLSERVER_PORT}/${{ secrets.SQLSERVER_PORT }}/g" "$DATADOG_DIR/conf.d/sqlserver.d/conf.yaml"
+                sed -i "s/\${SQLSERVER_USER}/${{ secrets.SQLSERVER_USER }}/g" "$DATADOG_DIR/conf.d/sqlserver.d/conf.yaml"
+                sed -i "s/\${SQLSERVER_PASSWORD}/${{ secrets.SQLSERVER_PASSWORD }}/g" "$DATADOG_DIR/conf.d/sqlserver.d/conf.yaml"
+                echo "  ✅ sqlserver.d/conf.yaml updated"
+              fi
+              
+              # SNMP configuration
+              if [ -f "$DATADOG_DIR/conf.d/snmp.d/conf.yaml" ]; then
+                echo "  📋 Updating snmp.d/conf.yaml..."
+                sed -i "s/\${ROUTER_IP}/${{ secrets.ROUTER_IP }}/g" "$DATADOG_DIR/conf.d/snmp.d/conf.yaml"
+                sed -i "s/\${PRINTER_IP}/${{ secrets.PRINTER_IP }}/g" "$DATADOG_DIR/conf.d/snmp.d/conf.yaml"
+                sed -i "s/\${SNMP_COMMUNITY_ROUTER}/${{ secrets.SNMP_COMMUNITY_ROUTER }}/g" "$DATADOG_DIR/conf.d/snmp.d/conf.yaml"
+                sed -i "s/\${SNMP_COMMUNITY_PRINTER}/${{ secrets.SNMP_COMMUNITY_PRINTER }}/g" "$DATADOG_DIR/conf.d/snmp.d/conf.yaml"
+                sed -i "s/\${SNMP_PORT}/${{ secrets.SNMP_PORT }}/g" "$DATADOG_DIR/conf.d/snmp.d/conf.yaml"
+                sed -i "s/\${SNMP_VERSION}/${{ secrets.SNMP_VERSION }}/g" "$DATADOG_DIR/conf.d/snmp.d/conf.yaml"
+                sed -i "s/\${SNMP_TIMEOUT}/${{ secrets.SNMP_TIMEOUT }}/g" "$DATADOG_DIR/conf.d/snmp.d/conf.yaml"
+                sed -i "s/\${SNMP_RETRIES}/${{ secrets.SNMP_RETRIES }}/g" "$DATADOG_DIR/conf.d/snmp.d/conf.yaml"
+                echo "  ✅ snmp.d/conf.yaml updated"
+              fi
+              
+              echo "✅ All environment variables substituted"
               
               # Clean up temp files
               rm -rf "/tmp/datadog-config"

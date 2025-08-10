@@ -4,8 +4,8 @@ init_config:
   ignore_nonincreasing_oid: true  # Ignore SNMP OID ordering issues
   
 instances:
-  - ip_address: '192.168.1.1'
-    community_string: 'quickstark'  # enclose with single quote
+  - ip_address: ${ROUTER_IP}
+    community_string: ${SNMP_COMMUNITY_ROUTER}  # enclose with single quote
     # Use generic device profile to avoid autodetect failures
     profile: generic-device
     tags:
@@ -13,13 +13,13 @@ instances:
         - "facility:home"
 
   # This dash is also indented 2 spaces, same as the first instance
-  - ip_address: '192.168.1.190'
+  - ip_address: ${PRINTER_IP}
     # These keys are all aligned at 4 spaces
-    port: 161
-    community_string: public
-    snmp_version: 2
-    timeout: 10
-    retries: 5
+    port: ${SNMP_PORT}
+    community_string: ${SNMP_COMMUNITY_PRINTER}
+    snmp_version: ${SNMP_VERSION}
+    timeout: ${SNMP_TIMEOUT}
+    retries: ${SNMP_RETRIES}
     min_collection_interval: 300
     device_id: brother-printer-nc8100w
     # Use generic device profile to avoid autodetect failures

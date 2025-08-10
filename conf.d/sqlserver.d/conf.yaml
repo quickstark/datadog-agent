@@ -2,11 +2,11 @@ init_config:
 instances:
   - dbm: true
     # SQL Server connection (Linux agent): use ODBC connector
-    host: '192.168.1.100'
-    port: 9003
-    username: 'datadog'
+    host: ${SQLSERVER_HOST}
+    port: ${SQLSERVER_PORT}
+    username: ${SQLSERVER_USER}
     # For dev/testing, set the cleartext password or configure the Agent secrets backend
-    password: 'Vall123@'
+    password: ${SQLSERVER_PASSWORD}
     connector: odbc
     driver: 'FreeTDS'
     # TLS options for FreeTDS
