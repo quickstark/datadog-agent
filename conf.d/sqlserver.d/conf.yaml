@@ -13,6 +13,11 @@ instances:
     encrypt: false
     trust_server_certificate: true
     tds_version: 8.0
+    # Timeout settings to prevent hanging connections
+    query_timeout: 10
+    connection_timeout: 5
+    # Reduce collection frequency
+    min_collection_interval: 60
     # Optional: tags
     tags:
       - 'service:fastapi'

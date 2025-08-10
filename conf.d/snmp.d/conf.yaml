@@ -6,8 +6,8 @@ init_config:
 instances:
   - ip_address: '192.168.1.1'
     community_string: 'quickstark'  # enclose with single quote
-    # Use generic Linux profile to avoid autodetect failures
-    profile: generic-linux
+    # Use generic device profile to avoid autodetect failures
+    profile: generic-device
     tags:
         - "location:argyle"
         - "facility:home"
@@ -22,8 +22,8 @@ instances:
     retries: 5
     min_collection_interval: 300
     device_id: brother-printer-nc8100w
-    # Use generic printer profile
-    profile: generic-printer
+    # Use generic device profile to avoid autodetect failures
+    profile: generic-device
     tags:
       - "printer:brother"
       - "model:NC-8100w"

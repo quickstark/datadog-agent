@@ -61,13 +61,17 @@ forwarder_timeout: 20
 # takes no more than 2MB in memory)
 forwarder_retry_queue_max_size: 30
 
+# Reduce check runners to prevent resource exhaustion
+check_runners: 2
+
 ####################################
 ## Logging Configuration ##########
 ####################################
 
-# Logging configuration
-log_level: info
+# Logging configuration - reduced verbosity to prevent log spam
+log_level: warn
 logs_enabled: true
+log_to_console: false
 
 # Main logs configuration
 logs_config:
@@ -103,20 +107,20 @@ process_config:
 
 # Disable advanced network monitoring features for kernel compatibility
 system_probe_config:
-  # Enable system-probe so runtime security can start; keep network tracer disabled below
-  enabled: true
+  # Disable system-probe to prevent connection errors
+  enabled: false
 
 runtime_security_config:
   ## @param enabled - boolean - optional - default: false
-  ## Set to true to enable the Security Runtime Module.
+  ## Disable Security Runtime Module to prevent connection errors
   #
-  enabled: true
+  enabled: false
 
 compliance_config:
   ## @param enabled - boolean - optional - default: false
-  ## Set to true to enable CIS benchmarks for CSPM.
+  ## Disable CIS benchmarks for CSPM to reduce resource usage
   #
-  enabled: true
+  enabled: false
 
 # Disable network config to prevent loading network monitoring modules
 network_config:
@@ -168,8 +172,8 @@ docker_labels_as_tags:
   traefik.frontend.rule: traefik_rule
   traefik.backend: traefik_backend
 
-# Enable autodiscovery for containers
-ad_config_poll_interval: 10s
+# Enable autodiscovery for containers - fix type casting issue
+ad_config_poll_interval: 10
 
 # Container monitoring optimizations for Synology
 container_exclude:

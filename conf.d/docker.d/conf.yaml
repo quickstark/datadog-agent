@@ -31,9 +31,11 @@ instances:
     # include:
     #   - ".*"  # Include all containers (default behavior)
     
-    # Performance tuning for Synology
-    timeout: 10
+    # Performance tuning for Synology - reduce timeout to prevent hanging
+    timeout: 5
     tls: false
+    # Reduce collection interval to prevent resource exhaustion
+    min_collection_interval: 15
     
     # Collect additional container metadata
     collect_labels_as_tags:
