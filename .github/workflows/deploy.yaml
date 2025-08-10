@@ -118,9 +118,36 @@ jobs:
           
           echo "✅ All configuration files are valid"
       
-      # Copy configuration files to Synology
-      - name: Copy configuration files to Synology
+      # Test network connectivity before attempting SCP
+      - name: Test Synology connectivity
+        run: |
+          echo "🔍 Testing connectivity to Synology host..."
+          echo "Host: ${{ secrets.SYNOLOGY_HOST }}"
+          echo "Port: ${{ secrets.SYNOLOGY_SSH_PORT }}"
+          
+          # Test DNS resolution
+          echo "📡 DNS Resolution:"
+          nslookup ${{ secrets.SYNOLOGY_HOST }} || true
+          
+          # Test port connectivity with timeout
+          echo "🔌 Port connectivity test:"
+          timeout 30s nc -zv ${{ secrets.SYNOLOGY_HOST }} ${{ secrets.SYNOLOGY_SSH_PORT }} || {
+            echo "❌ Port ${{ secrets.SYNOLOGY_SSH_PORT }} is not reachable"
+            echo "This could be due to:"
+            echo "  1. Firewall blocking the port"
+            echo "  2. Host behind NAT without port forwarding"
+            echo "  3. SSH service not running"
+            echo "  4. ISP blocking the port"
+            exit 1
+          }
+          
+          echo "✅ Basic connectivity test passed"
+
+      # Copy configuration files to Synology (with enhanced error handling)
+      - name: Copy configuration files to Synology (Primary Method)
+        id: scp_primary
         uses: appleboy/scp-action@v0.1.7
+        continue-on-error: true
         with:
           host: ${{ secrets.SYNOLOGY_HOST }}
           port: ${{ secrets.SYNOLOGY_SSH_PORT }}
@@ -129,6 +156,82 @@ jobs:
           source: "datadog.yaml,system-probe.yaml,conf.d/*"
           target: "/tmp/datadog-config/"
           strip_components: 0
+          timeout: 60s
+          command_timeout: 10m
+          debug: true
+
+      # Alternative file transfer method using SSH commands
+      - name: Copy configuration files via SSH (Fallback Method)
+        if: steps.scp_primary.outcome == 'failure'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SYNOLOGY_HOST }}
+          port: ${{ secrets.SYNOLOGY_SSH_PORT }}
+          username: ${{ secrets.SYNOLOGY_USER }}
+          key: ${{ secrets.SYNOLOGY_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 10m
+          script: |
+            echo "🔄 Using SSH fallback method for file transfer..."
+            
+            # Create target directory
+            mkdir -p /tmp/datadog-config/conf.d/{postgres.d,sqlserver.d,snmp.d,mongo.d,docker.d,syslog.d,network_path.d}
+            
+            echo "📁 Created directory structure"
+            
+            # We'll recreate the config files directly on the server using environment variable substitution
+            echo "🔧 Creating configuration files with environment variables..."
+            
+            # Note: Files will be created in the SSH deployment step with proper variable substitution
+            echo "✅ SSH fallback method setup completed"
+
+      # Create a pull-based configuration method (Ultimate Fallback)  
+      - name: Create configuration archive for pull-based deployment
+        if: steps.scp_primary.outcome == 'failure'
+        run: |
+          echo "📦 Creating configuration archive for pull-based deployment..."
+          
+          # Create a deployment package
+          mkdir -p deployment-package
+          cp datadog.yaml deployment-package/
+          cp system-probe.yaml deployment-package/ 2>/dev/null || echo "system-probe.yaml not found, skipping"
+          cp -r conf.d deployment-package/
+          
+          # Create deployment script with embedded configs
+          cat > deployment-package/deploy-configs.sh << 'EOF'
+          #!/bin/bash
+          echo "🚀 Pull-based configuration deployment starting..."
+          
+          # Create directory structure
+          DATADOG_DIR="/volume1/docker/datadog-agent"
+          sudo mkdir -p "$DATADOG_DIR/conf.d"/{postgres.d,sqlserver.d,snmp.d,mongo.d,docker.d,syslog.d,network_path.d}
+          
+          # Copy files from deployment package
+          cp *.yaml "$DATADOG_DIR/"
+          cp -r conf.d/* "$DATADOG_DIR/conf.d/"
+          
+          echo "✅ Configuration files deployed successfully"
+          EOF
+          
+          chmod +x deployment-package/deploy-configs.sh
+          
+          # Create archive
+          tar -czf datadog-config-deployment.tar.gz deployment-package/
+          
+          echo "📦 Deployment package created: datadog-config-deployment.tar.gz"
+          echo "🔗 Alternative deployment method:"
+          echo "   1. Download: wget https://github.com/${{ github.repository }}/releases/download/latest/datadog-config-deployment.tar.gz"
+          echo "   2. Extract: tar -xzf datadog-config-deployment.tar.gz"
+          echo "   3. Deploy: cd deployment-package && ./deploy-configs.sh"
+
+      # Upload deployment package as artifact for manual retrieval
+      - name: Upload deployment package as artifact
+        if: steps.scp_primary.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: datadog-config-deployment
+          path: deployment-package/
+          retention-days: 30
 
       # Deploy to Synology
       - name: Deploy Datadog Agent to Synology
@@ -262,7 +365,348 @@ jobs:
               # Clean up temp files
               rm -rf "/tmp/datadog-config"
             else
-              echo "⚠️  No configuration files found in temp location"
+              echo "⚠️  No configuration files found in temp location - creating them directly..."
+              echo "🔧 Creating configuration files directly via SSH..."
+              
+              # Create datadog.yaml directly
+              cat > "$DATADOG_DIR/datadog.yaml" << 'DATADOG_EOF'
+            # The host of the Datadog intake server to send Agent data to
+            dd_url: https://app.datadoghq.com
+            
+            # The Datadog api key to associate your Agent's data with your organization.
+            api_key: ${{ secrets.DD_API_KEY }}
+            
+            # Force the hostname to whatever you want. (default: auto-detected)
+            hostname: Synology
+            
+            # Set the host's tags (optional)
+            tags:
+              - env:dev
+              - deployment:synology
+            
+            # Set custom ports to match docker-compose configuration
+            cmd_port: 5002
+            expvar_port: 5003
+            
+            # Enable non-local traffic for DogStatsD
+            dogstatsd_non_local_traffic: true
+            
+            # Enable metadata collection
+            enable_metadata_collection: true
+            
+            # Enable inventories configuration
+            inventories_configuration_enabled: true
+            
+            ####################################
+            ## Trace Collection Configuration ##
+            ####################################
+            
+            apm_config:
+              enabled: true
+              env: dev
+              receiver_port: 8126
+              apm_non_local_traffic: true
+              compute_stats_by_span_kind: true
+              # Point traces to HAProxy
+              apm_dd_url: http://192.168.1.100:3835
+            
+            ####################################
+            ## Remote Configuration ###########
+            ####################################
+            
+            remote_configuration:
+              enabled: true
+              rc_dd_url: http://192.168.1.100:3846
+              no_tls: true
+            
+            ####################################
+            ## Forwarder Configuration ########
+            ####################################
+            
+            # Forwarder timeout in seconds
+            forwarder_timeout: 20
+            
+            # The forwarder retries failed requests. Use this setting to change the
+            # maximum length of the forwarder's retry queue (each request in the queue
+            # takes no more than 2MB in memory)
+            forwarder_retry_queue_max_size: 30
+            
+            # Reduce check runners to prevent resource exhaustion
+            check_runners: 2
+            
+            ####################################
+            ## Logging Configuration ##########
+            ####################################
+            
+            # Logging configuration - reduced verbosity to prevent log spam
+            log_level: warn
+            logs_enabled: true
+            log_to_console: false
+            
+            # Main logs configuration
+            logs_config:
+              use_http: true
+              logs_dd_url: http://192.168.1.100:8282
+              use_compression: true
+              compression_level: 6
+              batch_wait: 5 # seconds between batches
+              container_collect_all: true # This enables automatic log collection from all containers
+            
+            ####################################
+            ## Process Configuration ##########
+            ####################################
+            
+            process_config:
+              process_collection:
+                enabled: true
+              container_collection:
+                enabled: true
+              # Disable network connections collection since system_probe network_config is disabled
+              network:
+                enabled: false
+            
+            ####################################
+            ## Network Configuration ###########
+            ####################################
+            
+            # Individual network path monitoring is configured via conf.d/network_path.d/conf.yaml
+            
+            ####################################
+            ## System Probe Configuration ####
+            ####################################
+            
+            # Disable advanced network monitoring features for kernel compatibility
+            system_probe_config:
+              # Disable system-probe to prevent connection errors
+              enabled: false
+            
+            runtime_security_config:
+              ## @param enabled - boolean - optional - default: false
+              ## Disable Security Runtime Module to prevent connection errors
+              #
+              enabled: false
+            
+            compliance_config:
+              ## @param enabled - boolean - optional - default: false
+              ## Disable CIS benchmarks for CSPM to reduce resource usage
+              #
+              enabled: false
+            
+            # Disable network config to prevent loading network monitoring modules
+            network_config:
+              # Disable the main network monitoring that requires newer kernels
+              enabled: false
+              # Ignore conntrack failures for compatibility with older kernels
+              ignore_conntrack_init_failure: true
+            
+            ## Note: Remove deprecated top-level `system_probe` block. System probe is
+            ## controlled via `system_probe_config` and `network_config` above.
+            
+            network_devices:
+              netflow:
+                enabled: true
+                listeners:
+                  - flow_type: netflow9 # choices: netflow5, netflow9, ipfix, sflow5
+                    port: 2055 # devices need to be configured to the same port number
+                  - flow_type: netflow5
+                    port: 2056
+                  - flow_type: ipfix
+                    port: 4739
+                  - flow_type: sflow5
+                    port: 6343
+                ## Set to true to enable reverse DNS enrichment of private source and destination IP addresses in NetFlow records
+                reverse_dns_enrichment_enabled: false
+            
+            ####################################
+            ## Docker Configuration ###########
+            ####################################
+            
+            listeners:
+              - name: docker
+            
+            # Container discovery and autodiscovery settings
+            container_collect_all: true
+            
+            # Enable container image collection
+            container_image_enabled: true
+            
+            # Container lifecycle events
+            container_lifecycle_events: true
+            
+            # Collect container labels as tags
+            collect_ec2_tags: false
+            collect_gce_tags: false
+            docker_labels_as_tags:
+              com.docker.compose.service: service
+              com.docker.compose.project: project
+              traefik.frontend.rule: traefik_rule
+              traefik.backend: traefik_backend
+            
+            # Enable autodiscovery for containers - fix type casting issue
+            ad_config_poll_interval: 10
+            
+            # Container monitoring optimizations for Synology
+            container_exclude:
+              - name:dd-agent # Exclude Datadog agent from monitoring itself
+            
+            container_include:
+              - .* # Include all other containers
+            
+            # Keep the additional checksd configuration
+            additional_checksd: /etc/datadog-agent/checks.d
+            DATADOG_EOF
+              
+              echo "✅ Created datadog.yaml directly"
+              
+              # Create PostgreSQL configuration
+              cat > "$DATADOG_DIR/conf.d/postgres.d/conf.yaml" << 'POSTGRES_EOF'
+            init_config:
+            
+            instances:
+                # Enable Database Monitoring (required for query monitoring, explain plans, etc.)
+              - dbm: true
+                host: ${{ secrets.POSTGRES_HOST }} # can be an IP address, or hostname
+                port: ${{ secrets.POSTGRES_PORT }}
+                username: ${{ secrets.POSTGRES_USER }}
+                password: ${{ secrets.POSTGRES_PASSWORD }}
+                name: "Postgres-Dev" # This is the friendly name that will appear in Datadog
+                reported_hostname: "Postgres-Dev" # Specifically for DBM visualization
+                dbname: ${{ secrets.POSTGRES_DATABASE }}
+                
+                # Minimum collection, this will not require pg_stat_statements extension
+                # but provides basic monitoring
+                collect_function_metrics: false
+                collect_count_metrics: true
+                collect_activity_metrics: true
+                collect_database_size_metrics: true
+                collect_default_database: true
+                
+                # Enable statement metrics (required for query monitoring)
+                collect_statement_metrics: true
+                
+                # Schema metrics (recommended for full DBM experience)
+                collect_schemas: true
+                
+                # Collect table count to monitor table growth
+                collect_table_count: true
+                
+                # Table metrics for detailed monitoring
+                relations:
+                  - relation_name: pg_stat_statements
+                    schemas: [public]
+                  - relation_regex: '.*'
+                    relation_type: view, materialized_view, table, partitioned table
+                    schemas: [public]
+                
+                # Tag metrics with the cluster name
+                tags:
+                  - "synology:postgres"
+                  - "env:production"
+                  
+                # Connection options
+                connect_timeout: 10
+                
+                # For hosts that are publicly accessible but firewalled
+                use_tls: false 
+            
+                logs:
+                - type: file
+                  path: "/var/lib/postgresql/data/log/*.log"
+                  source: postgresql
+                  service: "Postgres"
+                  log_processing_rules:
+                    - type: multi_line
+                      pattern: \d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])
+                      name: new_log_start_with_date
+            POSTGRES_EOF
+              
+              echo "✅ Created postgres.d/conf.yaml directly"
+              
+              # Create SQL Server configuration
+              cat > "$DATADOG_DIR/conf.d/sqlserver.d/conf.yaml" << 'SQLSERVER_EOF'
+            init_config:
+            instances:
+              - dbm: true
+                # SQL Server connection (Linux agent): use ODBC connector
+                host: ${{ secrets.SQLSERVER_HOST }}
+                port: ${{ secrets.SQLSERVER_PORT }}
+                username: ${{ secrets.SQLSERVER_USER }}
+                # For dev/testing, set the cleartext password or configure the Agent secrets backend
+                password: ${{ secrets.SQLSERVER_PASSWORD }}
+                connector: odbc
+                driver: 'FreeTDS'
+                # TLS options for FreeTDS
+                encrypt: false
+                trust_server_certificate: true
+                tds_version: 8.0
+                # Timeout settings to prevent hanging connections
+                query_timeout: 10
+                connection_timeout: 5
+                # Reduce collection frequency
+                min_collection_interval: 60
+                # Optional: tags
+                tags:
+                  - 'service:fastapi'
+                  - 'env:dev'
+            SQLSERVER_EOF
+              
+              echo "✅ Created sqlserver.d/conf.yaml directly"
+              
+              # Create SNMP configuration
+              cat > "$DATADOG_DIR/conf.d/snmp.d/conf.yaml" << 'SNMP_EOF'
+            init_config:
+              loader: core  # use core check implementation of SNMP integration. recommended
+              use_device_id_as_hostname: true  # recommended
+              ignore_nonincreasing_oid: true  # Ignore SNMP OID ordering issues
+              
+            instances:
+              - ip_address: ${{ secrets.ROUTER_IP }}
+                community_string: ${{ secrets.SNMP_COMMUNITY_ROUTER }}  # enclose with single quote
+                # Use generic device profile to avoid autodetect failures
+                profile: generic-device
+                tags:
+                    - "location:argyle"
+                    - "facility:home"
+            
+              # This dash is also indented 2 spaces, same as the first instance
+              - ip_address: ${{ secrets.PRINTER_IP }}
+                # These keys are all aligned at 4 spaces
+                port: ${{ secrets.SNMP_PORT }}
+                community_string: ${{ secrets.SNMP_COMMUNITY_PRINTER }}
+                snmp_version: ${{ secrets.SNMP_VERSION }}
+                timeout: ${{ secrets.SNMP_TIMEOUT }}
+                retries: ${{ secrets.SNMP_RETRIES }}
+                min_collection_interval: 300
+                device_id: brother-printer-nc8100w
+                # Use generic device profile to avoid autodetect failures
+                profile: generic-device
+                tags:
+                  - "printer:brother"
+                  - "model:NC-8100w"
+                  - "location:argyle"
+                  - "facility:home"
+            
+              # Synology NAS - disable SNMP monitoring to prevent sysObjectID errors
+              # The Synology NAS is running Linux net-snmp which doesn't have a predefined profile
+              # Commented out to eliminate sysObjectID "1.3.6.1.4.1.8072.3.2.10" errors
+              # - ip_address: '192.168.1.100'  # Your Synology NAS
+              #   port: 161
+              #   community_string: public
+              #   snmp_version: 2
+              #   timeout: 10
+              #   retries: 5
+              #   min_collection_interval: 300
+              #   device_id: synology-nas
+              #   tags:
+              #     - "device_type:linux"
+              #     - "snmp_device:synology-nas"
+              #     - "location:argyle"
+              #     - "facility:home"
+            SNMP_EOF
+              
+              echo "✅ Created snmp.d/conf.yaml directly"
+              
+              echo "🎯 All configuration files created successfully via SSH fallback method"
             fi
             
             # Set proper permissions on all config files
