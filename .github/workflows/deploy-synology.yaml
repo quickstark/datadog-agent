@@ -380,26 +380,42 @@ jobs:
             echo "🔧 Substituting environment variables..."
             sed -i "s/\${DD_API_KEY}/${{ secrets.DD_API_KEY }}/g" "$DATADOG_DIR/datadog.yaml"
             
-            # Process database configurations
+            # Process database configurations with COMPLETE variable substitution
             for config_dir in postgres.d sqlserver.d snmp.d; do
               if [ -f "$DATADOG_DIR/conf.d/$config_dir/conf.yaml" ]; then
                 echo "  📋 Processing $config_dir configuration..."
                 case $config_dir in
                   postgres.d)
+                    echo "    🔧 Substituting PostgreSQL monitoring credentials..."
                     sed -i "s/\${POSTGRES_HOST}/${{ secrets.POSTGRES_HOST }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${POSTGRES_PORT}/${{ secrets.POSTGRES_PORT }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${POSTGRES_USER}/${{ secrets.POSTGRES_USER }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     sed -i "s/\${POSTGRES_PASSWORD}/${{ secrets.POSTGRES_PASSWORD }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${POSTGRES_DATABASE}/${{ secrets.POSTGRES_DATABASE }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     ;;
                   sqlserver.d)
+                    echo "    🔧 Substituting SQL Server monitoring credentials..."
                     sed -i "s/\${SQLSERVER_HOST}/${{ secrets.SQLSERVER_HOST }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SQLSERVER_PORT}/${{ secrets.SQLSERVER_PORT }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SQLSERVER_USER}/${{ secrets.SQLSERVER_USER }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     sed -i "s/\${SQLSERVER_PASSWORD}/${{ secrets.SQLSERVER_PASSWORD }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     ;;
                   snmp.d)
+                    echo "    🔧 Substituting SNMP network monitoring credentials..."
                     sed -i "s/\${ROUTER_IP}/${{ secrets.ROUTER_IP }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${PRINTER_IP}/${{ secrets.PRINTER_IP }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     sed -i "s/\${SNMP_COMMUNITY_ROUTER}/${{ secrets.SNMP_COMMUNITY_ROUTER }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SNMP_COMMUNITY_PRINTER}/${{ secrets.SNMP_COMMUNITY_PRINTER }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SNMP_PORT}/${{ secrets.SNMP_PORT }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SNMP_VERSION}/${{ secrets.SNMP_VERSION }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SNMP_TIMEOUT}/${{ secrets.SNMP_TIMEOUT }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SNMP_RETRIES}/${{ secrets.SNMP_RETRIES }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     ;;
                 esac
               fi
             done
+            
+            echo "✅ All environment variables substituted successfully"
             
             # Set proper permissions
             find "$DATADOG_DIR" -name "*.yaml" -exec chmod 644 {} \;
