@@ -4,9 +4,9 @@ instances:
     # SQL Server connection (Linux agent): use ODBC connector
     host: ${SQLSERVER_HOST}
     port: ${SQLSERVER_PORT}
-    username: ${SQLSERVER_USER}
+    username: ${DBM_USER}
     # For dev/testing, set the cleartext password or configure the Agent secrets backend
-    password: ${SQLSERVER_PASSWORD}
+    password: ${DBM_PASSWORD}
     connector: odbc
     driver: 'FreeTDS'
     # TLS options for FreeTDS

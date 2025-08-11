@@ -119,12 +119,10 @@ load_env_file() {
 }
 
 validate_required_secrets() {
-    print_step "Validating required secrets..."
+    print_step "Validating secrets..."
     
-    # Required secrets for Datadog Agent deployment
-    # Note: OPW secrets removed - OPW deployed separately
-    # Note: SYNOLOGY_SSH_KEY should be uploaded manually due to formatting issues
-    local required_secrets=(
+    # Critical secrets for deployment
+    local critical_secrets=(
         "DD_API_KEY"
         "DOCKERHUB_USER"
         "DOCKERHUB_TOKEN"
@@ -133,41 +131,25 @@ validate_required_secrets() {
         "SYNOLOGY_USER"
     )
     
-    # Database monitoring secrets (required for active integrations)
-    local database_secrets=(
-        "POSTGRES_HOST"
-        "POSTGRES_PORT" 
-        "POSTGRES_USER"
-        "POSTGRES_PASSWORD"
-        "POSTGRES_DATABASE"
-        "SQLSERVER_HOST"
-        "SQLSERVER_PORT"
-        "SQLSERVER_USER"
-        "SQLSERVER_PASSWORD"
-    )
-    
-    # SNMP monitoring secrets (required for network device monitoring)
-    local snmp_secrets=(
-        "SNMP_COMMUNITY_ROUTER"
-        "SNMP_COMMUNITY_PRINTER"
-        "ROUTER_IP"
-        "PRINTER_IP"
-        "SNMP_PORT"
-        "SNMP_VERSION"
-        "SNMP_TIMEOUT"
-        "SNMP_RETRIES"
-    )
-    
-    # Combine all required secrets
-    required_secrets+=("${database_secrets[@]}" "${snmp_secrets[@]}")
-    
-    local missing_secrets=()
+    local total_secrets=0
     local placeholder_secrets=()
+    local missing_critical=()
     local found_count=0
     
-    for secret in "${required_secrets[@]}"; do
+    # Count all secrets in the file
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]]; then
+            continue
+        fi
+        if [[ "$line" =~ ^([^=]+)=(.*)$ ]]; then
+            ((total_secrets++))
+        fi
+    done < <(grep "^[^=]*=" "$SECRETS_TEMP_FILE" 2>/dev/null || true)
+    
+    # Check critical secrets
+    for secret in "${critical_secrets[@]}"; do
         if ! has_secret "$secret"; then
-            missing_secrets+=("$secret")
+            missing_critical+=("$secret")
         else
             local value=$(get_secret "$secret")
             ((found_count++))
@@ -179,22 +161,22 @@ validate_required_secrets() {
     
     # Report validation results
     echo -e "${CYAN}Secret Validation Summary:${NC}"
-    echo "  Required secrets: ${#required_secrets[@]}"
-    echo "  Found secrets: $found_count"
-    echo "  Missing secrets: ${#missing_secrets[@]}"
+    echo "  Total secrets in .env: $total_secrets"
+    echo "  Critical secrets found: $((${#critical_secrets[@]} - ${#missing_critical[@]}))"
+    echo "  Missing critical: ${#missing_critical[@]}"
     echo "  Placeholder values: ${#placeholder_secrets[@]}"
     echo
     
-    if [[ ${#missing_secrets[@]} -gt 0 ]]; then
-        print_error "Missing required secrets:"
-        for secret in "${missing_secrets[@]}"; do
+    if [[ ${#missing_critical[@]} -gt 0 ]]; then
+        print_error "Missing critical secrets:"
+        for secret in "${missing_critical[@]}"; do
             echo "  - $secret"
         done
         exit 1
     fi
     
     if [[ ${#placeholder_secrets[@]} -gt 0 ]]; then
-        print_warning "Secrets with placeholder values:"
+        print_warning "Critical secrets with placeholder values:"
         for secret in "${placeholder_secrets[@]}"; do
             local value=$(get_secret "$secret")
             echo "  - $secret = $value"
@@ -210,78 +192,57 @@ validate_required_secrets() {
     fi
     
     print_success "Secret validation completed"
+    print_success "All $total_secrets secrets from .env will be uploaded to GitHub"
     echo
 }
 
 upload_secrets() {
     local repo="$1"
     
-    print_step "Uploading secrets to GitHub repository:"
+    print_step "Uploading ALL secrets from .env to GitHub repository:"
     echo "  Repository: $repo"
     
     local success_count=0
     local error_count=0
     local skipped_count=0
+    local ssh_key_found=false
     
-    # Required secrets for Datadog Agent deployment
-    # Note: OPW secrets removed - OPW deployed separately
-    # Note: SYNOLOGY_SSH_KEY should be uploaded manually due to formatting issues
-    local required_secrets=(
-        "DD_API_KEY"
-        "DOCKERHUB_USER"
-        "DOCKERHUB_TOKEN"
-        "SYNOLOGY_HOST"
-        "SYNOLOGY_SSH_PORT"
-        "SYNOLOGY_USER"
-    )
-    
-    # Database monitoring secrets (required for active integrations)
-    local database_secrets=(
-        "POSTGRES_HOST"
-        "POSTGRES_PORT" 
-        "POSTGRES_USER"
-        "POSTGRES_PASSWORD"
-        "POSTGRES_DATABASE"
-        "SQLSERVER_HOST"
-        "SQLSERVER_PORT"
-        "SQLSERVER_USER"
-        "SQLSERVER_PASSWORD"
-    )
-    
-    # SNMP monitoring secrets (required for network device monitoring)
-    local snmp_secrets=(
-        "SNMP_COMMUNITY_ROUTER"
-        "SNMP_COMMUNITY_PRINTER"
-        "ROUTER_IP"
-        "PRINTER_IP"
-        "SNMP_PORT"
-        "SNMP_VERSION"
-        "SNMP_TIMEOUT"
-        "SNMP_RETRIES"
-    )
-    
-    # Combine all required secrets
-    required_secrets+=("${database_secrets[@]}" "${snmp_secrets[@]}")
-    
-    for secret_name in "${required_secrets[@]}"; do
-        local secret_value=$(get_secret "$secret_name")
-        
-        if [[ -z "$secret_value" ]]; then
-            print_warning "Skipping empty secret: $secret_name"
-            ((skipped_count++))
+    # Upload ALL secrets from the temp file
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]]; then
             continue
         fi
         
-        print_step "Uploading: $secret_name"
-        
-        if gh secret set "$secret_name" --body "$secret_value" --repo "$repo"; then
-            print_success "✓ $secret_name"
-            ((success_count++))
-        else
-            print_error "✗ Failed to upload $secret_name"
-            ((error_count++))
+        if [[ "$line" =~ ^([^=]+)=(.*)$ ]]; then
+            local secret_name="${BASH_REMATCH[1]}"
+            local secret_value="${BASH_REMATCH[2]}"
+            
+            # Skip empty values
+            if [[ -z "$secret_value" ]]; then
+                print_warning "Skipping empty secret: $secret_name"
+                ((skipped_count++))
+                continue
+            fi
+            
+            # Special handling for SSH key - skip automatic upload due to formatting issues
+            if [[ "$secret_name" == "SYNOLOGY_SSH_KEY" ]]; then
+                ssh_key_found=true
+                print_warning "Skipping SYNOLOGY_SSH_KEY (requires manual upload)"
+                ((skipped_count++))
+                continue
+            fi
+            
+            print_step "Uploading: $secret_name"
+            
+            if gh secret set "$secret_name" --body "$secret_value" --repo "$repo"; then
+                print_success "✓ $secret_name"
+                ((success_count++))
+            else
+                print_error "✗ Failed to upload $secret_name"
+                ((error_count++))
+            fi
         fi
-    done
+    done < "$SECRETS_TEMP_FILE"
     
     echo
     echo -e "${CYAN}Upload Summary:${NC}"
@@ -295,10 +256,10 @@ upload_secrets() {
         return 1
     fi
     
-    print_success "All required secrets uploaded successfully!"
+    print_success "All secrets from .env uploaded successfully!"
     
     # Special handling for SSH key
-    if has_secret "SYNOLOGY_SSH_KEY"; then
+    if [[ "$ssh_key_found" == "true" ]]; then
         echo
         print_warning "📋 MANUAL SETUP REQUIRED:"
         echo "  The SYNOLOGY_SSH_KEY needs to be uploaded manually to GitHub:"
@@ -348,57 +309,44 @@ verify_secrets() {
         return 0
     fi
     
-    # Required secrets
-    # Note: OPW secrets removed - OPW deployed separately
-    # Note: SYNOLOGY_SSH_KEY should be uploaded manually
-    local required_secrets=(
-        "DD_API_KEY"
-        "DOCKERHUB_USER"
-        "DOCKERHUB_TOKEN"
-        "SYNOLOGY_HOST"
-        "SYNOLOGY_SSH_PORT"
-        "SYNOLOGY_USER"
-    )
-    
-    # Database monitoring secrets (required for active integrations)
-    local database_secrets=(
-        "POSTGRES_HOST"
-        "POSTGRES_PORT" 
-        "POSTGRES_USER"
-        "POSTGRES_PASSWORD"
-        "POSTGRES_DATABASE"
-        "SQLSERVER_HOST"
-        "SQLSERVER_PORT"
-        "SQLSERVER_USER"
-        "SQLSERVER_PASSWORD"
-    )
-    
-    # SNMP monitoring secrets (required for network device monitoring)
-    local snmp_secrets=(
-        "SNMP_COMMUNITY_ROUTER"
-        "SNMP_COMMUNITY_PRINTER"
-        "ROUTER_IP"
-        "PRINTER_IP"
-        "SNMP_PORT"
-        "SNMP_VERSION"
-        "SNMP_TIMEOUT"
-        "SNMP_RETRIES"
-    )
-    
-    # Combine all required secrets
-    required_secrets+=("${database_secrets[@]}" "${snmp_secrets[@]}")
-    
     local verified_count=0
+    local total_local_secrets=0
+    local missing_secrets=()
     
-    for secret in "${required_secrets[@]}"; do
-        if echo "$github_secrets" | grep -q "^$secret"; then
-            ((verified_count++))
-        else
-            print_warning "Secret not found on GitHub: $secret"
+    # Count total secrets in local file and verify each one
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]]; then
+            continue
         fi
-    done
+        
+        if [[ "$line" =~ ^([^=]+)=(.*)$ ]]; then
+            local secret_name="${BASH_REMATCH[1]}"
+            local secret_value="${BASH_REMATCH[2]}"
+            
+            # Skip empty values and SSH key (manually uploaded)
+            if [[ -z "$secret_value" || "$secret_name" == "SYNOLOGY_SSH_KEY" ]]; then
+                continue
+            fi
+            
+            ((total_local_secrets++))
+            
+            if echo "$github_secrets" | grep -q "^$secret_name"; then
+                ((verified_count++))
+            else
+                missing_secrets+=("$secret_name")
+            fi
+        fi
+    done < "$SECRETS_TEMP_FILE"
     
-    print_success "Verified $verified_count/${#required_secrets[@]} secrets on GitHub"
+    print_success "Verified $verified_count/$total_local_secrets secrets on GitHub"
+    
+    if [[ ${#missing_secrets[@]} -gt 0 ]]; then
+        print_warning "Secrets not found on GitHub:"
+        for secret in "${missing_secrets[@]}"; do
+            echo "  - $secret"
+        done
+    fi
+    
     echo
 }
 

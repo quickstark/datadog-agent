@@ -5,10 +5,10 @@ init_config:
   
 instances:
   - ip_address: ${ROUTER_IP}
-    community_string: ${SNMP_COMMUNITY_ROUTER}  # enclose with single quote
-    # Use generic device profile to avoid autodetect failures
-    profile: generic-device
+    community_string: ${SNMP_COMMUNITY_ROUTER}
+    # Let Datadog auto-detect the device profile (safer than specifying invalid profile)
     tags:
+        - "device_type:router"
         - "location:argyle"
         - "facility:home"
 
@@ -22,9 +22,9 @@ instances:
     retries: ${SNMP_RETRIES}
     min_collection_interval: 300
     device_id: brother-printer-nc8100w
-    # Use generic device profile to avoid autodetect failures
-    profile: generic-device
+    # Let Datadog auto-detect the device profile for Brother printer
     tags:
+      - "device_type:printer"
       - "printer:brother"
       - "model:NC-8100w"
       - "location:argyle"

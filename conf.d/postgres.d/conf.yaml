@@ -5,8 +5,8 @@ instances:
   - dbm: true
     host: ${POSTGRES_HOST} # can be an IP address, or hostname
     port: ${POSTGRES_PORT}
-    username: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
+    username: ${DBM_USER}
+    password: ${DBM_PASSWORD}
     name: "Postgres-Dev" # This is the friendly name that will appear in Datadog
     reported_hostname: "Postgres-Dev" # Specifically for DBM visualization
     dbname: ${POSTGRES_DATABASE}

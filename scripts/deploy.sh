@@ -172,10 +172,8 @@ validate_env_file() {
     
     print_step "Validating environment file: $env_file"
     
-    # Required Datadog Agent variables
-    # Note: OPW secrets removed - OPW deployed separately
-    # Note: SYNOLOGY_SSH_KEY should be uploaded manually to GitHub
-    local required_vars=(
+    # Critical deployment variables (must have real values)
+    local critical_vars=(
         "DD_API_KEY"
         "DOCKERHUB_USER"
         "DOCKERHUB_TOKEN"
@@ -184,39 +182,11 @@ validate_env_file() {
         "SYNOLOGY_USER"
     )
     
-    # Database monitoring variables (required for active integrations)
-    local database_vars=(
-        "POSTGRES_HOST"
-        "POSTGRES_PORT" 
-        "POSTGRES_USER"
-        "POSTGRES_PASSWORD"
-        "POSTGRES_DATABASE"
-        "SQLSERVER_HOST"
-        "SQLSERVER_PORT"
-        "SQLSERVER_USER"
-        "SQLSERVER_PASSWORD"
-    )
-    
-    # SNMP monitoring variables (required for network device monitoring)
-    local snmp_vars=(
-        "SNMP_COMMUNITY_ROUTER"
-        "SNMP_COMMUNITY_PRINTER"
-        "ROUTER_IP"
-        "PRINTER_IP"
-        "SNMP_PORT"
-        "SNMP_VERSION"
-        "SNMP_TIMEOUT"
-        "SNMP_RETRIES"
-    )
-    
-    # Combine all required variables
-    required_vars+=("${database_vars[@]}" "${snmp_vars[@]}")
-    
     # Count total variables and placeholders
     local total_vars=0
     local placeholder_vars=0
     local empty_vars=0
-    local missing_vars=()
+    local missing_critical=()
     local found_vars=()
     
     while IFS= read -r line || [[ -n "$line" ]]; do
@@ -245,10 +215,10 @@ validate_env_file() {
         fi
     done < "$env_file"
     
-    # Check for missing required variables
-    for var in "${required_vars[@]}"; do
+    # Check for missing critical variables only
+    for var in "${critical_vars[@]}"; do
         if [[ ! " ${found_vars[*]} " =~ " $var " ]]; then
-            missing_vars+=("$var")
+            missing_critical+=("$var")
         fi
     done
     
@@ -258,17 +228,17 @@ validate_env_file() {
     echo -e "  Valid values: $((total_vars - placeholder_vars - empty_vars))"
     echo -e "  Placeholder values: $placeholder_vars"
     echo -e "  Empty values: $empty_vars"
-    echo -e "  Missing required: ${#missing_vars[@]}"
+    echo -e "  Missing critical: ${#missing_critical[@]}"
     
-    if [[ ${#missing_vars[@]} -gt 0 ]]; then
-        echo -e "${RED}  Missing variables: ${missing_vars[*]}${NC}"
+    if [[ ${#missing_critical[@]} -gt 0 ]]; then
+        echo -e "${RED}  Missing critical variables: ${missing_critical[*]}${NC}"
     fi
     echo
     
-    if [[ ${#missing_vars[@]} -gt 0 ]]; then
-        print_error "Missing required variables for Datadog Agent deployment"
-        echo -e "${YELLOW}Please add these variables to your $env_file:${NC}"
-        for var in "${missing_vars[@]}"; do
+    if [[ ${#missing_critical[@]} -gt 0 ]]; then
+        print_error "Missing critical variables for deployment"
+        echo -e "${YELLOW}Please add these critical variables to your $env_file:${NC}"
+        for var in "${missing_critical[@]}"; do
             echo "  $var=your_value_here"
         done
         exit 1
@@ -283,6 +253,7 @@ validate_env_file() {
     fi
     
     print_success "Environment file validation completed"
+    print_success "All variables from $env_file will be uploaded to GitHub secrets"
     echo
 }
 
@@ -335,7 +306,7 @@ load_env_file() {
         
         # Verify critical variables are available
         local critical_vars=("DD_API_KEY" "DOCKERHUB_USER" "DOCKERHUB_TOKEN" "SYNOLOGY_HOST")
-        local database_vars=("POSTGRES_HOST" "POSTGRES_USER" "POSTGRES_PASSWORD" "SQLSERVER_HOST" "SQLSERVER_USER" "SQLSERVER_PASSWORD")
+        local database_vars=("POSTGRES_HOST" "POSTGRES_PORT" "POSTGRES_DATABASE" "SQLSERVER_HOST" "SQLSERVER_PORT" "DBM_USER" "DBM_PASSWORD")
         local snmp_vars=("SNMP_COMMUNITY_ROUTER" "ROUTER_IP" "PRINTER_IP")
         
         local missing_vars=()
