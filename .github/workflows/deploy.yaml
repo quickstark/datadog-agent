@@ -738,76 +738,221 @@ jobs:
             
                   # OPW image pulling removed - deployed separately
             
-            # Stop existing Datadog Agent container
-            echo "🛑 Stopping existing Datadog Agent..."
-            $DOCKER_CMD stop dd-agent || echo "No existing dd-agent container to stop"
-            $DOCKER_CMD rm dd-agent || echo "No existing dd-agent container to remove"
+            # Enhanced Synology-specific container cleanup
+            echo "🛑 Stopping existing Datadog Agent with Synology-specific handling..."
             
-            # Clean up old containers and images
+            # Function to handle stuck containers on Synology
+            cleanup_stuck_container() {
+                local container_name="$1"
+                local container_id=""
+                
+                echo "🔍 Checking container status: $container_name"
+                
+                # Get container ID if it exists
+                if container_id=$($DOCKER_CMD ps -aq -f name="^${container_name}$" 2>/dev/null); then
+                    if [[ -n "$container_id" ]]; then
+                        echo "📋 Found container: $container_id"
+                        
+                        # Method 1: Standard stop with timeout
+                        echo "🔄 Attempting standard stop (30s timeout)..."
+                        if timeout 30s $DOCKER_CMD stop "$container_name" 2>/dev/null; then
+                            echo "✅ Container stopped successfully"
+                        else
+                            echo "⚠️  Standard stop failed or timed out"
+                            
+                            # Method 2: Force kill
+                            echo "💀 Force killing container..."
+                            $DOCKER_CMD kill "$container_name" 2>/dev/null || true
+                            sleep 5
+                        fi
+                        
+                        # Method 3: Force remove
+                        echo "🗑️  Force removing container..."
+                        if $DOCKER_CMD rm -f "$container_name" 2>/dev/null; then
+                            echo "✅ Container removed successfully"
+                        else
+                            echo "⚠️  Force remove failed, trying system-level cleanup..."
+                            
+                            # Method 4: System process cleanup (Synology-specific)
+                            echo "🔧 Attempting system-level cleanup..."
+                            
+                            # Find and kill related processes
+                            if pgrep -f "datadog-agent" >/dev/null 2>&1; then
+                                echo "🎯 Killing datadog-agent processes..."
+                                pkill -f "datadog-agent" 2>/dev/null || true
+                                sleep 3
+                            fi
+                            
+                            # Try Docker daemon restart if needed (last resort)
+                            echo "🔄 Checking if Docker daemon restart is needed..."
+                            if ! $DOCKER_CMD ps >/dev/null 2>&1; then
+                                echo "⚠️  Docker daemon appears unresponsive - may need manual intervention"
+                                echo "💡 Suggestion: Restart Docker service on Synology"
+                            else
+                                # Final removal attempt
+                                $DOCKER_CMD rm -f "$container_name" 2>/dev/null || {
+                                    echo "❌ Unable to remove stuck container"
+                                    echo "🚨 Will use alternative container name"
+                                    return 1
+                                }
+                            fi
+                        fi
+                    else
+                        echo "✅ No container found with name: $container_name"
+                    fi
+                else
+                    echo "✅ No existing container to clean up"
+                fi
+                
+                return 0
+            }
+            
+            # Execute cleanup with fallback naming strategy
+            CONTAINER_NAME="dd-agent"
+            if ! cleanup_stuck_container "$CONTAINER_NAME"; then
+                echo "🔄 Primary container name blocked, using timestamped alternative..."
+                CONTAINER_NAME="dd-agent-$(date +%s)"
+                echo "📝 New container name: $CONTAINER_NAME"
+            fi
+            
+            # Clean up old containers and images (with better error handling)
             echo "🧹 Cleaning up old resources..."
-            $DOCKER_CMD container prune -f
-            $DOCKER_CMD image prune -f
+            $DOCKER_CMD container prune -f 2>/dev/null || echo "Container prune completed with warnings"
+            $DOCKER_CMD image prune -f 2>/dev/null || echo "Image prune completed with warnings"
             
-            # Deploy standalone Datadog Agent
-            echo "🚀 Starting standalone Datadog Agent..."
-            $DOCKER_CMD run -d \
-              --name dd-agent \
-              --privileged \
-              --restart unless-stopped \
-              --network host \
-              -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
-              -v /var/run/docker.sock:/var/run/docker.sock:ro \
-              -v /proc:/host/proc:ro \
-              -v /sys/fs/cgroup:/host/sys/fs/cgroup:ro \
-              -v /sys/kernel/debug:/sys/kernel/debug \
-              -v /etc/passwd:/etc/passwd:ro \
-              -v /volume1/@docker/containers:/var/lib/docker/containers:ro \
-              -v /volume1/docker/datadog-agent/datadog.yaml:/etc/datadog-agent/datadog.yaml:ro \
-              -v /volume1/docker/datadog-agent/system-probe.yaml:/etc/datadog-agent/system-probe.yaml:ro \
-              -v /volume1/docker/datadog-agent/conf.d:/etc/datadog-agent/conf.d:ro \
-              --cap-add SYS_ADMIN \
-              --cap-add SYS_RESOURCE \
-              --cap-add SYS_PTRACE \
-              --cap-add NET_ADMIN \
-              --cap-add NET_BROADCAST \
-              --cap-add NET_RAW \
-              --cap-add IPC_LOCK \
-              --cap-add CHOWN \
-              --security-opt apparmor:unconfined \
-              --label "deployment.timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-              --label "deployment.source=github-actions" \
-              --label "deployment.commit=${{ github.sha }}" \
-              --label "deployment.repository=${{ github.repository }}" \
-              ${{ secrets.DOCKERHUB_USER }}/dd-agent:latest
+            # Verify cleanup success
+            echo "🔍 Verifying cleanup..."
+            if $DOCKER_CMD ps -a | grep -q "dd-agent"; then
+                echo "⚠️  Some dd-agent containers still present:"
+                $DOCKER_CMD ps -a | grep "dd-agent" || true
+            else
+                echo "✅ All previous dd-agent containers cleaned up"
+            fi
+            
+            # Deploy standalone Datadog Agent with dynamic naming
+            echo "🚀 Starting standalone Datadog Agent with container name: $CONTAINER_NAME"
+            
+            # Enhanced deployment with retry logic
+            deploy_datadog_agent() {
+                local attempt=1
+                local max_attempts=3
+                
+                while [[ $attempt -le $max_attempts ]]; do
+                    echo "🔄 Deployment attempt $attempt of $max_attempts..."
+                    
+                    if $DOCKER_CMD run -d \
+                        --name "$CONTAINER_NAME" \
+                        --privileged \
+                        --restart unless-stopped \
+                        --network host \
+                        -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
+                        -v /var/run/docker.sock:/var/run/docker.sock:ro \
+                        -v /proc:/host/proc:ro \
+                        -v /sys/fs/cgroup:/host/sys/fs/cgroup:ro \
+                        -v /sys/kernel/debug:/sys/kernel/debug \
+                        -v /etc/passwd:/etc/passwd:ro \
+                        -v /volume1/@docker/containers:/var/lib/docker/containers:ro \
+                        -v /volume1/docker/datadog-agent/datadog.yaml:/etc/datadog-agent/datadog.yaml:ro \
+                        -v /volume1/docker/datadog-agent/system-probe.yaml:/etc/datadog-agent/system-probe.yaml:ro \
+                        -v /volume1/docker/datadog-agent/conf.d:/etc/datadog-agent/conf.d:ro \
+                        --cap-add SYS_ADMIN \
+                        --cap-add SYS_RESOURCE \
+                        --cap-add SYS_PTRACE \
+                        --cap-add NET_ADMIN \
+                        --cap-add NET_BROADCAST \
+                        --cap-add NET_RAW \
+                        --cap-add IPC_LOCK \
+                        --cap-add CHOWN \
+                        --security-opt apparmor:unconfined \
+                        --label "deployment.timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+                        --label "deployment.source=github-actions" \
+                        --label "deployment.commit=${{ github.sha }}" \
+                        --label "deployment.repository=${{ github.repository }}" \
+                        ${{ secrets.DOCKERHUB_USER }}/dd-agent:latest 2>&1; then
+                        
+                        echo "✅ Datadog Agent container started successfully on attempt $attempt"
+                        return 0
+                    else
+                        echo "❌ Deployment attempt $attempt failed"
+                        
+                        if [[ $attempt -lt $max_attempts ]]; then
+                            echo "🔄 Waiting 10 seconds before retry..."
+                            sleep 10
+                            
+                            # Try to clean up failed container before retry
+                            echo "🧹 Cleaning up failed deployment..."
+                            $DOCKER_CMD rm -f "$CONTAINER_NAME" 2>/dev/null || true
+                            
+                            # Generate new container name for retry
+                            CONTAINER_NAME="dd-agent-$(date +%s)"
+                            echo "📝 Using new container name for retry: $CONTAINER_NAME"
+                        fi
+                    fi
+                    
+                    ((attempt++))
+                done
+                
+                echo "❌ All deployment attempts failed"
+                return 1
+            }
+            
+            # Execute the deployment
+            if deploy_datadog_agent; then
+                echo "🎉 Datadog Agent deployment successful!"
+            else
+                echo "💥 Deployment failed after all attempts"
+                echo "🔧 Manual intervention may be required"
+                echo "💡 Suggestions:"
+                echo "  1. SSH to Synology and run: docker ps -a | grep dd-agent"
+                echo "  2. Manually remove stuck containers: docker rm -f <container_id>"
+                echo "  3. Restart Docker service if needed"
+                echo "  4. Re-run the deployment workflow"
+                exit 1
+            fi
             
             # Wait for service to be ready
             echo "⏳ Waiting for Datadog Agent to start..."
             sleep 30
             
-            # Verify service is running
-            echo "🔍 Verifying Datadog Agent status..."
-            if $DOCKER_CMD ps | grep -q "dd-agent.*Up"; then
+            # Verify service is running with dynamic container name
+            echo "🔍 Verifying Datadog Agent status for container: $CONTAINER_NAME"
+            if $DOCKER_CMD ps | grep -q "$CONTAINER_NAME.*Up"; then
               echo "✅ Datadog Agent is running"
             else
               echo "❌ Datadog Agent failed to start"
-              $DOCKER_CMD logs dd-agent
+              echo "🔍 Container status:"
+              $DOCKER_CMD ps -a --filter "name=$CONTAINER_NAME"
+              echo "📋 Container logs:"
+              $DOCKER_CMD logs "$CONTAINER_NAME" --tail 50
               exit 1
             fi
             
-            # Health check
+            # Health check with enhanced error handling
             echo "🏥 Performing health checks..."
             
             # Check Datadog Agent health
-            if $DOCKER_CMD exec dd-agent /opt/datadog-agent/bin/agent/agent health 2>/dev/null; then
+            if $DOCKER_CMD exec "$CONTAINER_NAME" /opt/datadog-agent/bin/agent/agent health 2>/dev/null; then
               echo "✅ Datadog Agent health check passed"
             else
               echo "⚠️  Datadog Agent health check failed - checking logs..."
-              $DOCKER_CMD logs dd-agent --tail 20
+              echo "📋 Recent container logs:"
+              $DOCKER_CMD logs "$CONTAINER_NAME" --tail 20
+              echo "🔍 Container process status:"
+              $DOCKER_CMD exec "$CONTAINER_NAME" ps aux | head -10 2>/dev/null || echo "Could not get process list"
             fi
             
             # Show final status
             echo "📊 Final service status:"
-            $DOCKER_CMD ps --filter "name=dd-agent"
+            $DOCKER_CMD ps --filter "name=$CONTAINER_NAME"
+            
+            # Verify PostgreSQL integration specifically  
+            echo "🎯 Testing PostgreSQL integration..."
+            if $DOCKER_CMD exec "$CONTAINER_NAME" datadog-agent check postgres 2>/dev/null | grep -q "OK"; then
+              echo "✅ PostgreSQL integration working"
+            else
+              echo "⚠️  PostgreSQL integration check:"
+              $DOCKER_CMD exec "$CONTAINER_NAME" datadog-agent check postgres 2>&1 | head -10 || echo "Check command failed"
+            fi
             
             echo "🎉 Datadog Agent deployment completed successfully!"
             echo "📍 Agent Status: http://localhost:5002/status"
