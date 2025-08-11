@@ -585,7 +585,14 @@ jobs:
                 collect_statement_metrics: true
                 
                 # Schema metrics (recommended for full DBM experience)
-                collect_schemas: true
+                schemas_collection:
+                  enabled: true
+                
+                # Database metrics collection
+                database_metrics:
+                  # Enable metric collection for indexes
+                  index_usage_metrics:
+                    enabled: true
                 
                 # Collect table count to monitor table growth
                 collect_table_count: true

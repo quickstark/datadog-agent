@@ -16,6 +16,12 @@ instances:
     # Timeout settings to prevent hanging connections
     query_timeout: 10
     connection_timeout: 5
+    schemas_collection:
+      enabled: true
+    database_metrics:
+      # Optional: enable metric collection for indexes
+      index_usage_metrics:
+        enabled: true
     # Reduce collection frequency
     min_collection_interval: 60
     # Optional: tags
