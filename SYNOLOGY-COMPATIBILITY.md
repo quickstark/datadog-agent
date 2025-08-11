@@ -134,17 +134,17 @@ network_config:
 
 2. **Or deploy manually**:
    ```bash
-   docker run -d --name dd-agent-synology \
+   docker run -d --name dd-agent \
      --restart unless-stopped \
      --network host \
      -e DD_API_KEY=your_key \
      -v /var/run/docker.sock:/var/run/docker.sock:ro \
      -v /proc:/host/proc:ro \
      -v /sys/fs/cgroup:/host/sys/fs/cgroup:ro \
-     -v /volume1/docker/datadog-agent-synology/datadog.yaml:/etc/datadog-agent/datadog.yaml:ro \
+     -v /volume1/docker/datadog-agent/datadog.yaml:/etc/datadog-agent/datadog.yaml:ro \
      --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add SETGID --cap-add SETUID \
      --security-opt no-new-privileges=true \
-     your_dockerhub_user/dd-agent-synology:latest
+     your_dockerhub_user/dd-agent:latest
    ```
 
 ### Step 2: Test with Minimal Configuration
@@ -271,17 +271,17 @@ network_config:
 docker ps -a | grep dd-agent
 
 # Check container logs
-docker logs dd-agent-synology --tail 50
+docker logs dd-agent --tail 50
 
 # Check agent health
-docker exec dd-agent-synology datadog-agent health
+docker exec dd-agent datadog-agent health
 
 # Check configuration
-docker exec dd-agent-synology datadog-agent config
+docker exec dd-agent datadog-agent config
 
 # Test database connections
-docker exec dd-agent-synology datadog-agent check postgres
-docker exec dd-agent-synology datadog-agent check sqlserver
+docker exec dd-agent datadog-agent check postgres
+docker exec dd-agent datadog-agent check sqlserver
 ```
 
 ## 📝 Configuration Templates
@@ -391,7 +391,7 @@ If Synology-compatible version has issues:
 
 1. **Stop new container**:
    ```bash
-   docker stop dd-agent-synology
+   docker stop dd-agent
    ```
 
 2. **Restore backup configuration**:

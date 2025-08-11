@@ -21,7 +21,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 MINIMAL_CONFIG="$PROJECT_DIR/datadog-minimal.yaml"
-TEST_CONTAINER_NAME="dd-agent-minimal-test"
+TEST_CONTAINER_NAME="dd-agent-test"
 TIMEOUT=60
 VERBOSE=false
 SKIP_CLEANUP=false

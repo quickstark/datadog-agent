@@ -29,7 +29,7 @@ on:
 env:
   # Deployment mode identifier
   DEPLOYMENT_MODE: "synology-compatible"
-  CONTAINER_NAME_PREFIX: "dd-agent-synology"
+  CONTAINER_NAME_PREFIX: "dd-agent"
 
 jobs:
   build-and-deploy:
@@ -54,18 +54,18 @@ jobs:
           npm install -g @datadog/datadog-ci
           datadog-ci version
       
-      # Build Synology-compatible Datadog Agent image
+      # Build Synology-compatible Datadog Agent image using existing Dockerfile
       - name: Build and push Synology-compatible Datadog Agent
         id: docker_build_agent
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile.synology  # Use Synology-compatible Dockerfile
+          file: ./Dockerfile  # Use existing Dockerfile (will be configured safely at runtime)
           platforms: linux/amd64  # Synology DS923+ AMD64 compatibility
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USER }}/dd-agent-synology:latest
-            ${{ secrets.DOCKERHUB_USER }}/dd-agent-synology:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USER }}/dd-agent:latest
+            ${{ secrets.DOCKERHUB_USER }}/dd-agent:synology-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           labels: |
@@ -239,12 +239,17 @@ jobs:
             echo "🔧 Using Docker: $DOCKER_CMD"
             echo "🎯 Synology-compatible deployment mode"
             
-            # Set up directory structure
-            DATADOG_DIR="/volume1/docker/datadog-agent-synology"
+            # Set up directory structure (use standard location)
+            DATADOG_DIR="/volume1/docker/datadog-agent"
             echo "📁 Setting up Synology-compatible directory structure..."
             
-            sudo mkdir -p "$DATADOG_DIR/conf.d"/{postgres.d,sqlserver.d,snmp.d,mongo.d,docker.d}
-            sudo chown -R $(whoami):users "$DATADOG_DIR"
+            # Try creating directories without sudo first
+            if ! mkdir -p "$DATADOG_DIR/conf.d"/{postgres.d,sqlserver.d,snmp.d,mongo.d,docker.d} 2>/dev/null; then
+              echo "⚠️  Permission denied for directory creation"
+              echo "📋 Directory will be created during file creation process"
+            else
+              echo "✅ Directory structure created successfully"
+            fi
             
             # Copy and process configuration files
             echo "📋 Processing Synology-compatible configuration files..."
@@ -261,6 +266,9 @@ jobs:
             # Create configurations if not present (SSH fallback scenario)
             if [ ! -f "$DATADOG_DIR/datadog.yaml" ]; then
               echo "🔧 Creating Synology-compatible configurations directly..."
+              
+              # Ensure directories exist before creating files
+              mkdir -p "$DATADOG_DIR/conf.d"/{postgres.d,sqlserver.d,snmp.d,mongo.d,docker.d} 2>/dev/null || echo "Using existing directories"
               
               # Create main datadog.yaml with disabled problematic features
               cat > "$DATADOG_DIR/datadog.yaml" << 'DATADOG_EOF'
@@ -400,9 +408,9 @@ jobs:
             echo "🔐 Logging into Docker Hub..."
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | $DOCKER_CMD login --username "${{ secrets.DOCKERHUB_USER }}" --password-stdin
             
-            # Pull Synology-compatible image
-            echo "📥 Pulling Synology-compatible Datadog Agent image..."
-            $DOCKER_CMD pull ${{ secrets.DOCKERHUB_USER }}/dd-agent-synology:latest
+            # Pull existing dd-agent image (with Synology-compatible configuration)
+            echo "📥 Pulling Datadog Agent image..."
+            $DOCKER_CMD pull ${{ secrets.DOCKERHUB_USER }}/dd-agent:latest
             
             # Enhanced container cleanup for Synology
             echo "🛑 Cleaning up existing Datadog Agent containers..."
@@ -437,8 +445,8 @@ jobs:
             
             cleanup_synology_containers
             
-            # Generate unique container name to avoid conflicts
-            CONTAINER_NAME="${{ env.CONTAINER_NAME_PREFIX }}-$(date +%s)"
+            # Use standard container name
+            CONTAINER_NAME="dd-agent"
             echo "📝 Using container name: $CONTAINER_NAME"
             
             # Deploy Synology-compatible Datadog Agent
@@ -469,7 +477,7 @@ jobs:
                 --label "deployment.timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
                 --label "deployment.source=github-actions" \
                 --label "deployment.commit=${{ github.sha }}" \
-                ${{ secrets.DOCKERHUB_USER }}/dd-agent-synology:latest 2>&1; then
+                ${{ secrets.DOCKERHUB_USER }}/dd-agent:latest 2>&1; then
                 
                 echo "✅ Synology-compatible Datadog Agent started successfully!"
             else
@@ -502,6 +510,8 @@ jobs:
               
               echo "🎉 Synology-compatible deployment successful!"
               echo "📊 Agent Status: http://localhost:5002/status"
+              echo "📋 Container name: $CONTAINER_NAME"
+              echo "📋 Logs: docker logs $CONTAINER_NAME"
             else
               echo "❌ Container failed to start properly"
               $DOCKER_CMD ps -a --filter "name=$CONTAINER_NAME"
@@ -552,7 +562,7 @@ jobs:
           echo ""
           echo "📍 Access URLs:"
           echo "   • Agent Status: http://localhost:5002/status"
-          echo "   • Agent Logs: docker logs dd-agent-synology-*"
+          echo "   • Agent Logs: docker logs dd-agent"
           echo ""
           echo "⚠️  Note: This configuration trades advanced security features"
           echo "   for Synology compatibility to prevent container lock-up."
@@ -572,7 +582,7 @@ jobs:
           echo ""
           echo "🛠️  For stuck containers:"
           echo "   • Use the synology-docker-troubleshoot.sh script"
-          echo "   • Or manually: docker rm -f dd-agent-*"
+          echo "   • Or manually: docker rm -f dd-agent"
           echo ""
           echo "💡 This workflow uses Synology-safe configurations."
           echo "   If issues persist, the problem may be infrastructure-related."

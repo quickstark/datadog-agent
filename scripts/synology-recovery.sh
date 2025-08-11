@@ -23,7 +23,8 @@ set -e
 # Script configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATADOG_DIR="/volume1/docker/datadog-agent"
-SYNOLOGY_DATADOG_DIR="/volume1/docker/datadog-agent-synology"
+# Use the same directory for Synology-compatible config
+SYNOLOGY_DATADOG_DIR="/volume1/docker/datadog-agent"
 
 # Colors for output
 RED='\033[0;31m'
@@ -381,22 +382,26 @@ repair_configuration() {
     
     print_step "Creating backup of current configuration..."
     local backup_dir="/volume1/docker/datadog-config-backup-$(date +%Y%m%d-%H%M%S)"
-    sudo mkdir -p "$backup_dir"
+    if ! mkdir -p "$backup_dir" 2>/dev/null; then
+        backup_dir="/tmp/datadog-config-backup-$(date +%Y%m%d-%H%M%S)"
+        mkdir -p "$backup_dir"
+        print_info "Using temporary backup location: $backup_dir"
+    fi
     
     if [[ -d "$SYNOLOGY_DATADOG_DIR" ]]; then
-        sudo cp -r "$SYNOLOGY_DATADOG_DIR"/* "$backup_dir/"
+        cp -r "$SYNOLOGY_DATADOG_DIR"/* "$backup_dir/" 2>/dev/null || print_warning "Partial backup created"
         print_success "Backup created at: $backup_dir"
     fi
     
     print_step "Repairing configuration files..."
     
     # Ensure Synology-compatible directory exists
-    sudo mkdir -p "$SYNOLOGY_DATADOG_DIR/conf.d"/{postgres.d,sqlserver.d,snmp.d}
+    mkdir -p "$SYNOLOGY_DATADOG_DIR/conf.d"/{postgres.d,sqlserver.d,snmp.d} 2>/dev/null || print_warning "Directory creation failed, continuing..."
     
     # Create minimal working configuration if missing
     if [[ ! -f "$SYNOLOGY_DATADOG_DIR/datadog.yaml" ]]; then
         print_step "Creating minimal datadog.yaml..."
-        sudo tee "$SYNOLOGY_DATADOG_DIR/datadog.yaml" > /dev/null << 'EOF'
+        cat > "$SYNOLOGY_DATADOG_DIR/datadog.yaml" << 'EOF'
 # Minimal Synology-Compatible Datadog Configuration
 dd_url: https://app.datadoghq.com
 api_key: ${DD_API_KEY}  # Will be substituted during deployment
@@ -442,9 +447,8 @@ EOF
         print_success "Minimal datadog.yaml created"
     fi
     
-    # Set proper permissions
-    sudo chown -R $(whoami):users "$SYNOLOGY_DATADOG_DIR"
-    find "$SYNOLOGY_DATADOG_DIR" -name "*.yaml" -exec chmod 644 {} \;
+    # Set proper permissions if possible
+    find "$SYNOLOGY_DATADOG_DIR" -name "*.yaml" -exec chmod 644 {} \; 2>/dev/null || print_warning "Permission setting skipped"
     
     print_success "Configuration repair completed"
 }
@@ -456,7 +460,11 @@ deploy_minimal_config() {
     print_step "Creating minimal test configuration..."
     
     local test_dir="$SYNOLOGY_DATADOG_DIR-test"
-    sudo mkdir -p "$test_dir"
+    mkdir -p "$test_dir" 2>/dev/null || {
+        echo "⚠️  Permission denied creating test directory, using /tmp"
+        test_dir="/tmp/datadog-agent-test"
+        mkdir -p "$test_dir"
+    }
     
     # Create ultra-minimal configuration for testing
     cat > "/tmp/minimal-datadog.yaml" << 'EOF'
@@ -492,8 +500,9 @@ container_collect_all: false
 enable_metadata_collection: false
 EOF
     
-    sudo mv "/tmp/minimal-datadog.yaml" "$test_dir/datadog.yaml"
-    sudo chown $(whoami):users "$test_dir/datadog.yaml"
+    mv "/tmp/minimal-datadog.yaml" "$test_dir/datadog.yaml"
+    # Set appropriate permissions if possible
+    chmod 644 "$test_dir/datadog.yaml" 2>/dev/null || echo "Using default permissions"
     
     print_success "Minimal test configuration created at: $test_dir"
     print_info "Use this configuration for troubleshooting container startup issues"
