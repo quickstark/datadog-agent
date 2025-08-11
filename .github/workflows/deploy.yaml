@@ -85,8 +85,8 @@ jobs:
             exit 1
           fi
           
-          if [ ! -f "Dockerfile.synology" ]; then
-            echo "❌ Dockerfile.synology not found"
+          if [ ! -f "Dockerfile" ]; then
+            echo "❌ Dockerfile not found"
             exit 1
           fi
           
@@ -96,21 +96,21 @@ jobs:
             exit 1
           }
           
-          # Validate Synology-specific configuration files
-          if [ -f "security-agent.synology.yaml" ]; then
-            python -c "import yaml; yaml.safe_load(open('security-agent.synology.yaml'))" || {
-              echo "❌ security-agent.synology.yaml has invalid YAML syntax"
+          # Validate additional configuration files
+          if [ -f "security-agent.yaml" ]; then
+            python -c "import yaml; yaml.safe_load(open('security-agent.yaml'))" || {
+              echo "❌ security-agent.yaml has invalid YAML syntax"
               exit 1
             }
-            echo "✅ security-agent.synology.yaml is valid"
+            echo "✅ security-agent.yaml is valid"
           fi
           
-          if [ -f "system-probe.synology.yaml" ]; then
-            python -c "import yaml; yaml.safe_load(open('system-probe.synology.yaml'))" || {
-              echo "❌ system-probe.synology.yaml has invalid YAML syntax"
+          if [ -f "system-probe.yaml" ]; then
+            python -c "import yaml; yaml.safe_load(open('system-probe.yaml'))" || {
+              echo "❌ system-probe.yaml has invalid YAML syntax"
               exit 1
             }
-            echo "✅ system-probe.synology.yaml is valid"
+            echo "✅ system-probe.yaml is valid"
           fi
           
           # Validate conf.d configurations
@@ -179,8 +179,8 @@ jobs:
           port: ${{ secrets.SYNOLOGY_SSH_PORT }}
           username: ${{ secrets.SYNOLOGY_USER }}
           key: ${{ secrets.SYNOLOGY_SSH_KEY }}
-          source: "datadog.yaml,security-agent.synology.yaml,system-probe.synology.yaml,conf.d/*"
-          target: "/tmp/datadog-config-synology/"
+          source: "datadog.yaml,security-agent.yaml,system-probe.yaml,conf.d/*"
+          target: "/tmp/datadog-config/"
           strip_components: 0
           timeout: 60s
           command_timeout: 10m
@@ -198,8 +198,8 @@ jobs:
           timeout: 60s
           command_timeout: 10m
           script: |
-            echo "🔄 Using SSH fallback for Synology-compatible configuration..."
-            mkdir -p /tmp/datadog-config-synology/conf.d/{postgres.d,sqlserver.d,snmp.d,mongo.d,docker.d}
+            echo "🔄 Using SSH fallback for configuration..."
+            mkdir -p /tmp/datadog-config/conf.d/{postgres.d,sqlserver.d,snmp.d,mongo.d,docker.d}
             echo "✅ SSH fallback method setup completed"
 
       # Deploy Synology-compatible Datadog Agent
@@ -254,13 +254,13 @@ jobs:
             # Copy and process configuration files
             echo "📋 Processing Synology-compatible configuration files..."
             
-            if [ -d "/tmp/datadog-config-synology" ]; then
+            if [ -d "/tmp/datadog-config" ]; then
               # Copy configuration files
-              cp "/tmp/datadog-config-synology/datadog.yaml" "$DATADOG_DIR/" 2>/dev/null || echo "Creating datadog.yaml directly..."
-              cp "/tmp/datadog-config-synology/security-agent.synology.yaml" "$DATADOG_DIR/security-agent.yaml" 2>/dev/null || echo "Creating security-agent.yaml directly..."
-              cp "/tmp/datadog-config-synology/system-probe.synology.yaml" "$DATADOG_DIR/system-probe.yaml" 2>/dev/null || echo "Creating system-probe.yaml directly..."
-              cp -r "/tmp/datadog-config-synology/conf.d"/* "$DATADOG_DIR/conf.d/" 2>/dev/null || echo "Creating conf.d files directly..."
-              rm -rf "/tmp/datadog-config-synology"
+              cp "/tmp/datadog-config/datadog.yaml" "$DATADOG_DIR/" 2>/dev/null || echo "Creating datadog.yaml directly..."
+              cp "/tmp/datadog-config/security-agent.yaml" "$DATADOG_DIR/security-agent.yaml" 2>/dev/null || echo "Creating security-agent.yaml directly..."
+              cp "/tmp/datadog-config/system-probe.yaml" "$DATADOG_DIR/system-probe.yaml" 2>/dev/null || echo "Creating system-probe.yaml directly..."
+              cp -r "/tmp/datadog-config/conf.d"/* "$DATADOG_DIR/conf.d/" 2>/dev/null || echo "Creating conf.d files directly..."
+              rm -rf "/tmp/datadog-config"
             fi
             
             # Create configurations if not present (SSH fallback scenario)

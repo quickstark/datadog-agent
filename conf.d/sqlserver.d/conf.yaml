@@ -1,9 +1,10 @@
 init_config:
+
 instances:
   - dbm: true
     # SQL Server connection (Linux agent): use ODBC connector
-    host: ${SQLSERVER_HOST}
-    port: ${SQLSERVER_PORT}
+    # Note: SQL Server format should be "host,port" not separate host and port
+    host: '${SQLSERVER_HOST},${SQLSERVER_PORT}'
     username: ${DBM_USER}
     # For dev/testing, set the cleartext password or configure the Agent secrets backend
     password: ${DBM_PASSWORD}
@@ -16,6 +17,8 @@ instances:
     # Timeout settings to prevent hanging connections
     query_timeout: 10
     connection_timeout: 5
+    # Database to connect to
+    database: master
     schemas_collection:
       enabled: true
     database_metrics:
@@ -26,5 +29,6 @@ instances:
     min_collection_interval: 60
     # Optional: tags
     tags:
-      - 'service:fastapi'
+      - 'service:sqlserver'
       - 'env:dev'
+      - 'database:master'
