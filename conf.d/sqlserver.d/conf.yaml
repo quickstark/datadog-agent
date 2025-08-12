@@ -21,16 +21,35 @@ instances:
     connection_timeout: 5
     # Database to connect to (should match your application database)
     database: ${SQLDATABASE}
+    
+    # CRITICAL: Enable statement metrics for APM correlation
+    collect_statement_metrics: true
+    
+    # Enable activity metrics to capture running queries
+    collect_activity_metrics: true
+    
+    # Enable other metrics for comprehensive monitoring
+    collect_count_metrics: true
+    collect_database_size_metrics: true
+    
+    # Schema metrics (recommended for full DBM experience)
     schemas_collection:
       enabled: true
+    
+    # Database metrics collection
     database_metrics:
-      # Optional: enable metric collection for indexes
+      # Enable metric collection for indexes
       index_usage_metrics:
         enabled: true
+    
     # Reduce collection frequency
     min_collection_interval: 60
-    # Optional: tags
+    
+    # Connection options
+    connect_timeout: 10
+    
+    # Tags for proper APM correlation
     tags:
-      - 'service:sqlserver-images-dev'
+      - 'service:sqlserver'
       - 'env:dev'
-      - 'database:master'
+      - 'database:images'
