@@ -11,7 +11,7 @@ instances:
     name: "SQLServer-Dev" # This is the friendly name that will appear in Datadog
     reported_hostname: "SQLServer-Dev" # Specifically for DBM visualization
     connector: odbc
-    driver: 'FreeTDS'
+    driver: 'ODBC Driver 18 for SQL Server'
     # TLS options for FreeTDS
     encrypt: false
     trust_server_certificate: true

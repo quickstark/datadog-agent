@@ -43,12 +43,27 @@
             ACCEPT_EULA=Y
 
         # Install PostgreSQL and SQL Server (ODBC via FreeTDS) dependencies in the final stage
-        RUN pip3 install --no-cache-dir psycopg2-binary \
-         && apt-get update \
-         && apt-get install -y --no-install-recommends unixodbc unixodbc-dev freetds-dev freetds-bin tdsodbc \
-         && pip3 install --no-cache-dir pyodbc \
-         && rm -rf /var/lib/apt/lists/*
+        # RUN pip3 install --no-cache-dir psycopg2-binary \
+        #  && apt-get update \
+        #  && apt-get install -y --no-install-recommends unixodbc unixodbc-dev freetds-dev freetds-bin tdsodbc \
+        #  && pip3 install --no-cache-dir pyodbc \
+        #  && rm -rf /var/lib/apt/lists/*
 
+        # Install PostgreSQL and SQL Server (ODBC via Microsoft driver + FreeTDS) dependencies in the final stage
+        RUN pip3 install --no-cache-dir psycopg2-binary \
+        && apt-get update \
+        && apt-get install -y --no-install-recommends \
+        curl gnupg unixodbc unixodbc-dev freetds-dev freetds-bin tdsodbc \
+        # Add Microsoft package repo for ODBC Driver 18
+        && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+        && curl https://packages.microsoft.com/config/debian/$(. /etc/os-release && echo $VERSION_ID)/prod.list \
+        > /etc/apt/sources.list.d/mssql-release.list \
+        && apt-get update \
+        && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+        # Install pyodbc for Python SQL Server access
+        && pip3 install --no-cache-dir pyodbc \
+        && rm -rf /var/lib/apt/lists/*
+    
         # Note: Configuration files are now managed via volume mounts during deployment
     # This allows for easier updates without rebuilding the Docker image
     # The following directories will be mounted at runtime:
