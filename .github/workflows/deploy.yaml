@@ -387,19 +387,19 @@ jobs:
                 case $config_dir in
                   postgres.d)
                     echo "    🔧 Substituting PostgreSQL monitoring credentials..."
-                    sed -i "s/\${POSTGRES_HOST}/${{ secrets.POSTGRES_HOST }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
-                    sed -i "s/\${POSTGRES_PORT}/${{ secrets.POSTGRES_PORT }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
-                    sed -i "s/\${DBM_USER}/${{ secrets.DBM_USER }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
-                    sed -i "s/\${DBM_PASSWORD}/${{ secrets.DBM_PASSWORD }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
-                    sed -i "s/\${POSTGRES_DATABASE}/${{ secrets.POSTGRES_DATABASE }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${PGHOST}/${{ secrets.PGHOST }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${PGPORT}/${{ secrets.PGPORT }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${PGUSER}/${{ secrets.PGUSER }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${PGPASSWORD}/${{ secrets.PGPASSWORD }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${PGDATABASE}/${{ secrets.PGDATABASE }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     ;;
                   sqlserver.d)
                     echo "    🔧 Substituting SQL Server monitoring credentials..."
-                    sed -i "s/\${SQLSERVER_HOST}/${{ secrets.SQLSERVERHOST }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
-                    sed -i "s/\${SQLSERVER_PORT}/${{ secrets.SQLSERVERPORT }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
-                    sed -i "s/\${DBM_USER}/${{ secrets.DBM_USER }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
-                    sed -i "s/\${DBM_PASSWORD}/${{ secrets.DBM_PASSWORD }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
-                    sed -i "s/\${SQLSERVER_USER_DATABASE}/${{ secrets.SQLSERVERDB }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SQLHOST}/${{ secrets.SQLHOST }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SQLPORT}/${{ secrets.SQLPORT }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SQLUSER}/${{ secrets.SQLUSER }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SQLPASSWORD}/${{ secrets.SQLPASSWORD }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SQLDATABASE}/${{ secrets.SQLDATABASE }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     ;;
                   snmp.d)
                     echo "    🔧 Substituting SNMP network monitoring credentials..."

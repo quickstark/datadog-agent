@@ -3,13 +3,13 @@ init_config:
 instances:
     # Enable Database Monitoring (required for query monitoring, explain plans, etc.)
   - dbm: true
-    host: ${POSTGRES_HOST} # can be an IP address, or hostname
-    port: ${POSTGRES_PORT}
-    username: ${DBM_USER}
-    password: ${DBM_PASSWORD}
+    host: ${PGHOST} # can be an IP address, or hostname
+    port: ${PGPORT}
+    username: ${PGUSER}
+    password: ${PGPASSWORD}
     name: "Postgres-Dev" # This is the friendly name that will appear in Datadog
     reported_hostname: "Postgres-Dev" # Specifically for DBM visualization
-    dbname: ${POSTGRES_DATABASE}
+    dbname: ${PGDATABASE}
     
     # Minimum collection, this will not require pg_stat_statements extension
     # but provides basic monitoring

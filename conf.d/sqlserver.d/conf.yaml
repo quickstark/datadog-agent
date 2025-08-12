@@ -4,10 +4,10 @@ instances:
   - dbm: true
     # SQL Server connection (Linux agent): use ODBC connector
     # Note: SQL Server format should be "host,port" not separate host and port
-    host: '${SQLSERVER_HOST},${SQLSERVER_PORT}'
-    username: ${DBM_USER}
+    host: '${SQLHOST},${SQLPORT}'
+    username: ${SQLUSER}
     # For dev/testing, set the cleartext password or configure the Agent secrets backend
-    password: ${DBM_PASSWORD}
+    password: ${SQLPASSWORD}
     name: "SQLServer-Dev" # This is the friendly name that will appear in Datadog
     reported_hostname: "SQLServer-Dev" # Specifically for DBM visualization
     connector: odbc
@@ -20,7 +20,7 @@ instances:
     query_timeout: 10
     connection_timeout: 5
     # Database to connect to (should match your application database)
-    database: ${SQLSERVER_USER_DATABASE}
+    database: ${SQLDATABASE}
     schemas_collection:
       enabled: true
     database_metrics:
