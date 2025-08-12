@@ -31,6 +31,6 @@ instances:
     min_collection_interval: 60
     # Optional: tags
     tags:
-      - 'service:sqlserver'
+      - 'service:sqlserver-images-dev'
       - 'env:dev'
       - 'database:master'

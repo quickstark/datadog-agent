@@ -180,6 +180,7 @@ jobs:
           port: ${{ secrets.SYNOLOGY_SSH_PORT }}
           username: ${{ secrets.SYNOLOGY_USER }}
           key: ${{ secrets.SYNOLOGY_SSH_KEY }}
+          passphrase: ${{ secrets.SYNOLOGY_SSH_PASSPHRASE }}
           source: "datadog.yaml,security-agent.yaml,system-probe.yaml,conf.d/*"
           target: "/tmp/datadog-config/"
           strip_components: 0
@@ -196,6 +197,7 @@ jobs:
           port: ${{ secrets.SYNOLOGY_SSH_PORT }}
           username: ${{ secrets.SYNOLOGY_USER }}
           key: ${{ secrets.SYNOLOGY_SSH_KEY }}
+          passphrase: ${{ secrets.SYNOLOGY_SSH_PASSPHRASE }}
           timeout: 60s
           command_timeout: 10m
           script: |
@@ -213,6 +215,7 @@ jobs:
           port: ${{ secrets.SYNOLOGY_SSH_PORT }}
           username: ${{ secrets.SYNOLOGY_USER }}
           key: ${{ secrets.SYNOLOGY_SSH_KEY }}
+          passphrase: ${{ secrets.SYNOLOGY_SSH_PASSPHRASE }}
           script: |
             # Find Docker command
             if [ -f /usr/local/bin/docker ]; then
