@@ -395,10 +395,11 @@ jobs:
                     ;;
                   sqlserver.d)
                     echo "    🔧 Substituting SQL Server monitoring credentials..."
-                    sed -i "s/\${SQLSERVER_HOST}/${{ secrets.SQLSERVER_HOST }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
-                    sed -i "s/\${SQLSERVER_PORT}/${{ secrets.SQLSERVER_PORT }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SQLSERVER_HOST}/${{ secrets.SQLSERVERHOST }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SQLSERVER_PORT}/${{ secrets.SQLSERVERPORT }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     sed -i "s/\${DBM_USER}/${{ secrets.DBM_USER }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     sed -i "s/\${DBM_PASSWORD}/${{ secrets.DBM_PASSWORD }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${SQLSERVER_USER_DATABASE}/${{ secrets.SQLSERVERDB }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     ;;
                   snmp.d)
                     echo "    🔧 Substituting SNMP network monitoring credentials..."

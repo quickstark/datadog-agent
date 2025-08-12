@@ -102,6 +102,7 @@ test_sqlserver_config() {
     echo "Variables to be used:"
     echo "  SQLSERVER_HOST: ${SQLSERVER_HOST:-NOT SET}"
     echo "  SQLSERVER_PORT: ${SQLSERVER_PORT:-NOT SET}"
+    echo "  SQLSERVER_DATABASE: ${SQLSERVER_DATABASE:-NOT SET}"
     echo "  Combined: ${SQLSERVER_HOST:-NOT SET},${SQLSERVER_PORT:-NOT SET}"
     echo "  DBM_USER: ${DBM_USER:-NOT SET}"
     echo "  DBM_PASSWORD: ${DBM_PASSWORD:+***SET***}"
@@ -111,6 +112,7 @@ test_sqlserver_config() {
     local missing_vars=()
     [[ -z "$SQLSERVER_HOST" ]] && missing_vars+=("SQLSERVER_HOST")
     [[ -z "$SQLSERVER_PORT" ]] && missing_vars+=("SQLSERVER_PORT")
+    [[ -z "$SQLSERVER_DATABASE" ]] && missing_vars+=("SQLSERVER_DATABASE")
     [[ -z "$DBM_USER" ]] && missing_vars+=("DBM_USER")
     [[ -z "$DBM_PASSWORD" ]] && missing_vars+=("DBM_PASSWORD")
     
@@ -122,8 +124,8 @@ test_sqlserver_config() {
     # Test connection (if sqlcmd is available)
     if command -v sqlcmd &> /dev/null; then
         print_step "Testing SQL Server connection..."
-        if sqlcmd -S "${SQLSERVER_HOST},${SQLSERVER_PORT}" -U "$DBM_USER" -P "$DBM_PASSWORD" -Q "SELECT @@VERSION" &> /dev/null; then
-            print_success "SQL Server connection successful"
+        if sqlcmd -S "${SQLSERVER_HOST},${SQLSERVER_PORT}" -U "$DBM_USER" -P "$DBM_PASSWORD" -d "$SQLSERVER_DATABASE" -Q "SELECT @@VERSION" &> /dev/null; then
+            print_success "SQL Server connection successful to database: $SQLSERVER_DATABASE"
         else
             print_warning "SQL Server connection failed (but this might be expected if running from different network)"
         fi
@@ -180,6 +182,7 @@ test_config_substitution() {
         # Substitute variables
         sed -i "s/\${SQLSERVER_HOST}/$SQLSERVER_HOST/g" "$temp_dir/sqlserver.yaml"
         sed -i "s/\${SQLSERVER_PORT}/$SQLSERVER_PORT/g" "$temp_dir/sqlserver.yaml"
+        sed -i "s/\${SQLSERVER_DATABASE}/$SQLSERVER_DATABASE/g" "$temp_dir/sqlserver.yaml"
         sed -i "s/\${DBM_USER}/$DBM_USER/g" "$temp_dir/sqlserver.yaml"
         sed -i "s/\${DBM_PASSWORD}/$DBM_PASSWORD/g" "$temp_dir/sqlserver.yaml"
         

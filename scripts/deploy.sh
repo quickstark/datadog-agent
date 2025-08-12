@@ -306,7 +306,7 @@ load_env_file() {
         
         # Verify critical variables are available
         local critical_vars=("DD_API_KEY" "DOCKERHUB_USER" "DOCKERHUB_TOKEN" "SYNOLOGY_HOST")
-        local database_vars=("POSTGRES_HOST" "POSTGRES_PORT" "POSTGRES_DATABASE" "SQLSERVER_HOST" "SQLSERVER_PORT" "DBM_USER" "DBM_PASSWORD")
+        local database_vars=("POSTGRES_HOST" "POSTGRES_PORT" "POSTGRES_DATABASE" "SQLSERVER_HOST" "SQLSERVER_PORT" "SQLSERVER_USER_DATABASE" "DBM_USER" "DBM_PASSWORD")
         local snmp_vars=("SNMP_COMMUNITY_ROUTER" "ROUTER_IP" "PRINTER_IP")
         
         local missing_vars=()

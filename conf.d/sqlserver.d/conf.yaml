@@ -8,6 +8,8 @@ instances:
     username: ${DBM_USER}
     # For dev/testing, set the cleartext password or configure the Agent secrets backend
     password: ${DBM_PASSWORD}
+    name: "SQLServer-Dev" # This is the friendly name that will appear in Datadog
+    reported_hostname: "SQLServer-Dev" # Specifically for DBM visualization
     connector: odbc
     driver: 'FreeTDS'
     # TLS options for FreeTDS
@@ -17,8 +19,8 @@ instances:
     # Timeout settings to prevent hanging connections
     query_timeout: 10
     connection_timeout: 5
-    # Database to connect to
-    database: master
+    # Database to connect to (should match your application database)
+    database: ${SQLSERVER_USER_DATABASE}
     schemas_collection:
       enabled: true
     database_metrics:
