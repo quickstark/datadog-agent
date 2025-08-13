@@ -119,22 +119,9 @@ load_env_file() {
 }
 
 validate_required_secrets() {
-    print_step "Validating secrets..."
-    
-    # Critical secrets for deployment
-    local critical_secrets=(
-        "DD_API_KEY"
-        "DOCKERHUB_USER"
-        "DOCKERHUB_TOKEN"
-        "SYNOLOGY_HOST"
-        "SYNOLOGY_SSH_PORT"
-        "SYNOLOGY_USER"
-    )
+    print_step "Preparing secrets for upload..."
     
     local total_secrets=0
-    local placeholder_secrets=()
-    local missing_critical=()
-    local found_count=0
     
     # Count all secrets in the file
     while IFS= read -r line || [[ -n "$line" ]]; do
@@ -146,52 +133,11 @@ validate_required_secrets() {
         fi
     done < <(grep "^[^=]*=" "$SECRETS_TEMP_FILE" 2>/dev/null || true)
     
-    # Check critical secrets
-    for secret in "${critical_secrets[@]}"; do
-        if ! has_secret "$secret"; then
-            missing_critical+=("$secret")
-        else
-            local value=$(get_secret "$secret")
-            ((found_count++))
-            if [[ "$value" =~ ^(your-|sk-your-|secret_your-|dd_|change_me|example) ]]; then
-                placeholder_secrets+=("$secret")
-            fi
-        fi
-    done
-    
-    # Report validation results
-    echo -e "${CYAN}Secret Validation Summary:${NC}"
+    # Report summary
+    echo -e "${CYAN}Secret Upload Summary:${NC}"
     echo "  Total secrets in .env: $total_secrets"
-    echo "  Critical secrets found: $((${#critical_secrets[@]} - ${#missing_critical[@]}))"
-    echo "  Missing critical: ${#missing_critical[@]}"
-    echo "  Placeholder values: ${#placeholder_secrets[@]}"
     echo
     
-    if [[ ${#missing_critical[@]} -gt 0 ]]; then
-        print_error "Missing critical secrets:"
-        for secret in "${missing_critical[@]}"; do
-            echo "  - $secret"
-        done
-        exit 1
-    fi
-    
-    if [[ ${#placeholder_secrets[@]} -gt 0 ]]; then
-        print_warning "Critical secrets with placeholder values:"
-        for secret in "${placeholder_secrets[@]}"; do
-            local value=$(get_secret "$secret")
-            echo "  - $secret = $value"
-        done
-        echo
-        
-        read -p "Continue uploading secrets with placeholder values? [y/N]: " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            print_error "Please update placeholder values before uploading secrets"
-            exit 1
-        fi
-    fi
-    
-    print_success "Secret validation completed"
     print_success "All $total_secrets secrets from .env will be uploaded to GitHub"
     echo
 }

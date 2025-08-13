@@ -50,24 +50,24 @@
         #  && pip3 install --no-cache-dir pyodbc \
         #  && rm -rf /var/lib/apt/lists/*
 
-        # Tools + unixODBC
+        # System deps + unixODBC
         RUN apt-get update \
         && apt-get install -y --no-install-recommends curl gnupg ca-certificates unixodbc unixodbc-dev \
-        && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
-        # Select Debian codename dynamically (bullseye/bookworm)
+        # Set up Microsoft repo keyring (no apt-key)
+        && mkdir -p /etc/apt/keyrings \
+        && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+            | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg \
+        # Pick Debian version dynamically (11=bullseye, 12=bookworm)
         && . /etc/os-release \
-        && echo "deb [arch=amd64,arm64] https://packages.microsoft.com/config/debian/${VERSION_ID}/prod.list /" \
+        # Download prod.list and inject signed-by + arch filter
+        && curl -fsSL "https://packages.microsoft.com/config/debian/${VERSION_ID}/prod.list" \
+            | sed 's#^deb #deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/microsoft.gpg] #' \
             > /etc/apt/sources.list.d/mssql-release.list \
         && apt-get update \
         && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+        # Python client libs
         && pip3 install --no-cache-dir pyodbc psycopg2-binary \
         && rm -rf /var/lib/apt/lists/*
-    
-        RUN printf "[ODBC Driver 18 for SQL Server]\n\
-        Description=Microsoft ODBC Driver 18 for SQL Server\n\
-        Driver=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.*.so\n\
-        UsageCount=1\n" > /etc/odbcinst.ini
-
         # Sanity checks at build-time (optional)
         RUN odbcinst -q -d && ldconfig -p | grep -i msodbcsql || true
 

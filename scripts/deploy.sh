@@ -170,24 +170,10 @@ select_env_file() {
 validate_env_file() {
     local env_file="$1"
     
-    print_step "Validating environment file: $env_file"
+    print_step "Checking environment file: $env_file"
     
-    # Critical deployment variables (must have real values)
-    local critical_vars=(
-        "DD_API_KEY"
-        "DOCKERHUB_USER"
-        "DOCKERHUB_TOKEN"
-        "SYNOLOGY_HOST"
-        "SYNOLOGY_SSH_PORT"
-        "SYNOLOGY_USER"
-    )
-    
-    # Count total variables and placeholders
+    # Count total variables
     local total_vars=0
-    local placeholder_vars=0
-    local empty_vars=0
-    local missing_critical=()
-    local found_vars=()
     
     while IFS= read -r line || [[ -n "$line" ]]; do
         # Skip empty lines and comments
@@ -196,64 +182,16 @@ validate_env_file() {
         fi
         
         if [[ "$line" =~ ^([^=]+)=(.*)$ ]]; then
-            local key="${BASH_REMATCH[1]}"
-            local value="${BASH_REMATCH[2]}"
-            
-            # Remove quotes
-            value=$(echo "$value" | sed 's/^["'\'']\|["'\'']$//g')
-            
             ((total_vars++))
-            found_vars+=("$key")
-            
-            if [[ -z "$value" ]]; then
-                ((empty_vars++))
-                print_warning "Empty value for: $key"
-            elif [[ "$value" =~ ^(your-|sk-your-|secret_your-|dd_|change_me|example) ]]; then
-                ((placeholder_vars++))
-                print_warning "Placeholder value for: $key"
-            fi
         fi
     done < "$env_file"
-    
-    # Check for missing critical variables only
-    for var in "${critical_vars[@]}"; do
-        if [[ ! " ${found_vars[*]} " =~ " $var " ]]; then
-            missing_critical+=("$var")
-        fi
-    done
     
     echo
     echo -e "${CYAN}Environment File Summary:${NC}"
     echo -e "  Total variables: $total_vars"
-    echo -e "  Valid values: $((total_vars - placeholder_vars - empty_vars))"
-    echo -e "  Placeholder values: $placeholder_vars"
-    echo -e "  Empty values: $empty_vars"
-    echo -e "  Missing critical: ${#missing_critical[@]}"
-    
-    if [[ ${#missing_critical[@]} -gt 0 ]]; then
-        echo -e "${RED}  Missing critical variables: ${missing_critical[*]}${NC}"
-    fi
     echo
     
-    if [[ ${#missing_critical[@]} -gt 0 ]]; then
-        print_error "Missing critical variables for deployment"
-        echo -e "${YELLOW}Please add these critical variables to your $env_file:${NC}"
-        for var in "${missing_critical[@]}"; do
-            echo "  $var=your_value_here"
-        done
-        exit 1
-    fi
-    
-    if [[ $placeholder_vars -gt 0 || $empty_vars -gt 0 ]]; then
-        print_warning "Some variables have placeholder or empty values"
-        if ! prompt_yes_no "Continue with deployment anyway?"; then
-            print_error "Please update your environment file with actual values"
-            exit 1
-        fi
-    fi
-    
-    print_success "Environment file validation completed"
-    print_success "All variables from $env_file will be uploaded to GitHub secrets"
+    print_success "Environment file loaded - all variables will be uploaded to GitHub secrets"
     echo
 }
 
@@ -303,59 +241,6 @@ load_env_file() {
         done < "$temp_env_file"
         
         echo "  Loaded $loaded_count environment variables"
-        
-        # Verify critical variables are available
-        local critical_vars=("DD_API_KEY" "DOCKERHUB_USER" "DOCKERHUB_TOKEN" "SYNOLOGY_HOST")
-        local database_vars=("POSTGRES_HOST" "POSTGRES_PORT" "POSTGRES_DATABASE" "SQLSERVER_HOST" "SQLSERVER_PORT" "SQLSERVER_USER_DATABASE" "DBM_USER" "DBM_PASSWORD")
-        local snmp_vars=("SNMP_COMMUNITY_ROUTER" "ROUTER_IP" "PRINTER_IP")
-        
-        local missing_vars=()
-        local missing_db_vars=()
-        local missing_snmp_vars=()
-        
-        # Check critical deployment variables
-        for var in "${critical_vars[@]}"; do
-            if [[ -z "${!var}" ]]; then
-                missing_vars+=("$var")
-            fi
-        done
-        
-        # Check database variables
-        for var in "${database_vars[@]}"; do
-            if [[ -z "${!var}" ]]; then
-                missing_db_vars+=("$var")
-            fi
-        done
-        
-        # Check SNMP variables
-        for var in "${snmp_vars[@]}"; do
-            if [[ -z "${!var}" ]]; then
-                missing_snmp_vars+=("$var")
-            fi
-        done
-        
-        # Critical deployment variables must be present
-        if [[ ${#missing_vars[@]} -gt 0 ]]; then
-            print_error "Critical deployment variables not loaded: ${missing_vars[*]}"
-            exit 1
-        else
-            print_success "All critical deployment variables are available"
-        fi
-        
-        # Database and SNMP variables are informational
-        if [[ ${#missing_db_vars[@]} -gt 0 ]]; then
-            print_warning "Missing database variables: ${missing_db_vars[*]}"
-            echo "  Database monitoring may not work properly"
-        else
-            print_success "All database monitoring variables are available"
-        fi
-        
-        if [[ ${#missing_snmp_vars[@]} -gt 0 ]]; then
-            print_warning "Missing SNMP variables: ${missing_snmp_vars[*]}"
-            echo "  SNMP monitoring may not work properly"
-        else
-            print_success "All SNMP monitoring variables are available"
-        fi
     else
         print_error "Failed to load environment variables from $env_file"
         exit 1
