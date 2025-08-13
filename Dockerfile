@@ -51,40 +51,36 @@
         #  && rm -rf /var/lib/apt/lists/*
 
         # Always start strict
+        # Make shell strict and noninteractive; also force dpkg to keep existing configs
         SHELL ["/bin/bash", "-o", "pipefail", "-c"]
         ENV DEBIAN_FRONTEND=noninteractive
 
-        # Show base details (so we know the right repo)
-        RUN cat /etc/os-release || true
-        RUN dpkg --print-architecture
+        # Show what we’re on (debug)
+        RUN cat /etc/os-release && dpkg --print-architecture
 
-        RUN apt-get update
-        RUN apt-get install -y --no-install-recommends curl gnupg ca-certificates unixodbc unixodbc-dev
+        # Core deps (keep existing config files automatically to avoid the openssl prompt)
+        RUN apt-get update \
+        && apt-get install -y --no-install-recommends \
+            -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+            curl gnupg ca-certificates unixodbc unixodbc-dev
 
-        # Microsoft repo: keyring + signed-by (no apt-key)
+        # Microsoft repo keyring + Ubuntu 24.04 prod.list with signed-by
         RUN mkdir -p /etc/apt/keyrings \
         && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
-        | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg \
-        && chmod 644 /etc/apt/keyrings/microsoft.gpg
+            | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg \
+        && chmod 0644 /etc/apt/keyrings/microsoft.gpg \
+        && curl -fsSL "https://packages.microsoft.com/config/ubuntu/24.04/prod.list" \
+            | sed 's#^deb #deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/microsoft.gpg] #' \
+            > /etc/apt/sources.list.d/mssql-release.list \
+        && apt-get update
 
-        # Use the right Debian codename by VERSION_ID (11 or 12)
-        RUN . /etc/os-release \
-        && echo "Using Debian VERSION_ID=${VERSION_ID}" \
-        && curl -fsSL "https://packages.microsoft.com/config/debian/${VERSION_ID}/prod.list" \
-        | sed 's#^deb #deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/microsoft.gpg] #' \
-        > /etc/apt/sources.list.d/mssql-release.list \
-        && cat /etc/apt/sources.list.d/mssql-release.list
+        # Install the ODBC driver (accept EULA) and Python DB libs
+        RUN ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+        && pip3 install --no-cache-dir pyodbc psycopg2-binary \
+        && rm -rf /var/lib/apt/lists/*
 
-        # Debug update (if this fails, you’ll see why)
-        RUN apt-get update
-
-        # Install ODBC driver
-        RUN ACCEPT_EULA=Y apt-get install -y msodbcsql18
-
-        # Python DB libs — ensure the exact spelling
-        RUN pip3 install --no-cache-dir pyodbc psycopg2-binary
-
-        RUN rm -rf /var/lib/apt/lists/*
+# (Optional) ensure driver is registered on slim bases
+# RUN printf "[ODBC Driver 18 for SQL Server]\nDescription=Microsoft ODBC Driver 18 for SQL Server\nDriver=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.*.so\nUsageCount=1\n" > /etc/odbcinst.ini
 
         # Note: Configuration files are now managed via volume mounts during deployment
         # This allows for easier updates without rebuilding the Docker image

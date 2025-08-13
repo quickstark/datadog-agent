@@ -369,42 +369,78 @@ perform_git_operations() {
 
 check_env_file_changes() {
     local env_file="$1"
+    local hash_file="${env_file}.hash"
     
-    print_step "Checking if environment file has changes..."
+    print_step "Checking if environment file content has changed..."
     
-    # Check if file exists in git (is tracked)
-    if ! git ls-files --error-unmatch "$env_file" >/dev/null 2>&1; then
-        print_warning "Environment file '$env_file' is not tracked by git"
-        print_warning "All untracked environment files will trigger secrets upload"
-        return 0  # Upload secrets for untracked files
+    # Check if env file exists
+    if [[ ! -f "$env_file" ]]; then
+        print_error "Environment file '$env_file' not found"
+        return 0  # Upload needed if file missing
     fi
     
-    # Check git status for the specific file
-    local file_status=$(git status --porcelain "$env_file" 2>/dev/null)
-    
-    if [[ -n "$file_status" ]]; then
-        local status_code="${file_status:0:2}"
-        case "$status_code" in
-            " M"|"M "|"MM")
-                print_success "Environment file has been modified - secrets upload required"
-                return 0  # File modified, upload needed
-                ;;
-            " A"|"A "|"AM")
-                print_success "Environment file has been added - secrets upload required" 
-                return 0  # File added, upload needed
-                ;;
-            "??")
-                print_warning "Environment file is untracked - secrets upload required"
-                return 0  # File untracked, upload needed
-                ;;
-            *)
-                print_success "Environment file has changes ($status_code) - secrets upload required"
-                return 0  # Other changes, upload needed
-                ;;
-        esac
+    # Generate current hash of env file content
+    local current_hash
+    if command -v sha256sum >/dev/null 2>&1; then
+        current_hash=$(sha256sum "$env_file" 2>/dev/null | cut -d' ' -f1)
+    elif command -v shasum >/dev/null 2>&1; then
+        current_hash=$(shasum -a 256 "$env_file" 2>/dev/null | cut -d' ' -f1)
     else
-        print_success "Environment file unchanged - secrets upload can be skipped"
-        return 1  # No changes, upload not needed
+        # Fallback to md5 if sha256 not available
+        if command -v md5sum >/dev/null 2>&1; then
+            current_hash=$(md5sum "$env_file" 2>/dev/null | cut -d' ' -f1)
+        elif command -v md5 >/dev/null 2>&1; then
+            current_hash=$(md5 -q "$env_file" 2>/dev/null)
+        else
+            print_warning "No hash utility available - assuming file changed"
+            return 0  # Upload needed if can't hash
+        fi
+    fi
+    
+    if [[ -z "$current_hash" ]]; then
+        print_warning "Failed to generate hash - assuming file changed"
+        return 0  # Upload needed if hash failed
+    fi
+    
+    # Check if we have a previous hash
+    if [[ -f "$hash_file" ]]; then
+        local previous_hash
+        previous_hash=$(cat "$hash_file" 2>/dev/null | tr -d '\n')
+        
+        if [[ "$current_hash" == "$previous_hash" ]]; then
+            print_success "Environment file content unchanged - secrets upload can be skipped"
+            return 1  # No upload needed
+        else
+            print_success "Environment file content changed - secrets upload required"
+            return 0  # Upload needed
+        fi
+    else
+        print_success "No previous hash found - secrets upload required (first run)"
+        return 0  # Upload needed on first run
+    fi
+}
+
+update_env_hash() {
+    local env_file="$1"
+    local hash_file="${env_file}.hash"
+    
+    # Generate and store current hash
+    local current_hash
+    if command -v sha256sum >/dev/null 2>&1; then
+        current_hash=$(sha256sum "$env_file" 2>/dev/null | cut -d' ' -f1)
+    elif command -v shasum >/dev/null 2>&1; then
+        current_hash=$(shasum -a 256 "$env_file" 2>/dev/null | cut -d' ' -f1)
+    elif command -v md5sum >/dev/null 2>&1; then
+        current_hash=$(md5sum "$env_file" 2>/dev/null | cut -d' ' -f1)
+    elif command -v md5 >/dev/null 2>&1; then
+        current_hash=$(md5 -q "$env_file" 2>/dev/null)
+    fi
+    
+    if [[ -n "$current_hash" ]]; then
+        echo "$current_hash" > "$hash_file"
+        print_success "Updated environment file hash for future comparisons"
+    else
+        print_warning "Could not generate hash for future comparisons"
     fi
 }
 
@@ -523,10 +559,14 @@ main() {
     # Check if environment file has changes and conditionally upload secrets
     if check_env_file_changes "$env_file"; then
         upload_secrets "$env_file"
+        # Update hash after successful upload
+        update_env_hash "$env_file"
     else
         print_step "Skipping secrets upload - environment file unchanged"
         if prompt_yes_no "Force upload secrets anyway?"; then
             upload_secrets "$env_file"
+            # Update hash after forced upload
+            update_env_hash "$env_file"
         else
             print_success "Secrets upload skipped - using existing GitHub secrets"
         fi

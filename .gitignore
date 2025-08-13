@@ -8,6 +8,9 @@
 env.*
 !env.example
 
+# Environment file hash tracking (for deploy script)
+*.hash
+
 # Secrets and credentials
 *.key
 *.pem
