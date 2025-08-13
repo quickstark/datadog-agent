@@ -482,6 +482,47 @@ perform_git_operations() {
     echo
 }
 
+check_env_file_changes() {
+    local env_file="$1"
+    
+    print_step "Checking if environment file has changes..."
+    
+    # Check if file exists in git (is tracked)
+    if ! git ls-files --error-unmatch "$env_file" >/dev/null 2>&1; then
+        print_warning "Environment file '$env_file' is not tracked by git"
+        print_warning "All untracked environment files will trigger secrets upload"
+        return 0  # Upload secrets for untracked files
+    fi
+    
+    # Check git status for the specific file
+    local file_status=$(git status --porcelain "$env_file" 2>/dev/null)
+    
+    if [[ -n "$file_status" ]]; then
+        local status_code="${file_status:0:2}"
+        case "$status_code" in
+            " M"|"M "|"MM")
+                print_success "Environment file has been modified - secrets upload required"
+                return 0  # File modified, upload needed
+                ;;
+            " A"|"A "|"AM")
+                print_success "Environment file has been added - secrets upload required" 
+                return 0  # File added, upload needed
+                ;;
+            "??")
+                print_warning "Environment file is untracked - secrets upload required"
+                return 0  # File untracked, upload needed
+                ;;
+            *)
+                print_success "Environment file has changes ($status_code) - secrets upload required"
+                return 0  # Other changes, upload needed
+                ;;
+        esac
+    else
+        print_success "Environment file unchanged - secrets upload can be skipped"
+        return 1  # No changes, upload not needed
+    fi
+}
+
 upload_secrets() {
     local env_file="$1"
     
@@ -594,8 +635,17 @@ main() {
     fi
     # If git_status_result is 1, user chose not to trigger deployment
     
-    # Upload secrets to GitHub
-    upload_secrets "$env_file"
+    # Check if environment file has changes and conditionally upload secrets
+    if check_env_file_changes "$env_file"; then
+        upload_secrets "$env_file"
+    else
+        print_step "Skipping secrets upload - environment file unchanged"
+        if prompt_yes_no "Force upload secrets anyway?"; then
+            upload_secrets "$env_file"
+        else
+            print_success "Secrets upload skipped - using existing GitHub secrets"
+        fi
+    fi
     
     # Monitor deployment
     monitor_deployment

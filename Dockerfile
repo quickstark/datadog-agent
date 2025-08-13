@@ -68,15 +68,15 @@
         Driver=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.*.so\n\
         UsageCount=1\n" > /etc/odbcinst.ini
 
-         Sanity checks at build-time (optional)
-    RUN odbcinst -q -d && ldconfig -p | grep -i msodbcsql || true
+        # Sanity checks at build-time (optional)
+        RUN odbcinst -q -d && ldconfig -p | grep -i msodbcsql || true
 
         # Note: Configuration files are now managed via volume mounts during deployment
-    # This allows for easier updates without rebuilding the Docker image
-    # The following directories will be mounted at runtime:
-    # - /volume1/docker/datadog-agent/datadog.yaml:/etc/datadog-agent/datadog.yaml:ro
-    # - /volume1/docker/datadog-agent/system-probe.yaml:/etc/datadog-agent/system-probe.yaml:ro
-    # - /volume1/docker/datadog-agent/conf.d:/etc/datadog-agent/conf.d:ro
+        # This allows for easier updates without rebuilding the Docker image
+        # The following directories will be mounted at runtime:
+        # - /volume1/docker/datadog-agent/datadog.yaml:/etc/datadog-agent/datadog.yaml:ro
+        # - /volume1/docker/datadog-agent/system-probe.yaml:/etc/datadog-agent/system-probe.yaml:ro
+        # - /volume1/docker/datadog-agent/conf.d:/etc/datadog-agent/conf.d:ro
 
         # Expose all ports to match docker-compose configuration
         EXPOSE 8125/udp 8126/tcp 2055/udp 2056/udp 4739/udp 6343/udp 514/udp 514/tcp 5002/tcp 5003/tcp 
