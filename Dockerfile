@@ -1,7 +1,7 @@
         # Stage 1: Builder
         # FROM datadog/agent:latest AS builder
         FROM datadog/agent:7.54.0
-        
+
         # Install PostgreSQL dependencies
         RUN pip3 install --no-cache-dir psycopg2-binary
 
@@ -50,21 +50,27 @@
         #  && pip3 install --no-cache-dir pyodbc \
         #  && rm -rf /var/lib/apt/lists/*
 
-        # Install PostgreSQL and SQL Server (ODBC via Microsoft driver + FreeTDS) dependencies in the final stage
-        RUN pip3 install --no-cache-dir psycopg2-binary \
-        && apt-get update \
-        && apt-get install -y --no-install-recommends \
-        curl gnupg unixodbc unixodbc-dev freetds-dev freetds-bin tdsodbc \
-        # Add Microsoft package repo for ODBC Driver 18
+        # Tools + unixODBC
+        RUN apt-get update \
+        && apt-get install -y --no-install-recommends curl gnupg ca-certificates unixodbc unixodbc-dev \
         && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
-        && curl https://packages.microsoft.com/config/debian/11/prod.list \
-       > /etc/apt/sources.list.d/mssql-release.list \
+        # Select Debian codename dynamically (bullseye/bookworm)
+        && . /etc/os-release \
+        && echo "deb [arch=amd64,arm64] https://packages.microsoft.com/config/debian/${VERSION_ID}/prod.list /" \
+            > /etc/apt/sources.list.d/mssql-release.list \
         && apt-get update \
         && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
-        # Install pyodbc for Python SQL Server access
-        && pip3 install --no-cache-dir pyodbc \
+        && pip3 install --no-cache-dir pyodbc psycopg2-binary \
         && rm -rf /var/lib/apt/lists/*
     
+        RUN printf "[ODBC Driver 18 for SQL Server]\n\
+        Description=Microsoft ODBC Driver 18 for SQL Server\n\
+        Driver=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.*.so\n\
+        UsageCount=1\n" > /etc/odbcinst.ini
+
+         Sanity checks at build-time (optional)
+    RUN odbcinst -q -d && ldconfig -p | grep -i msodbcsql || true
+
         # Note: Configuration files are now managed via volume mounts during deployment
     # This allows for easier updates without rebuilding the Docker image
     # The following directories will be mounted at runtime:
