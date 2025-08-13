@@ -4,7 +4,7 @@ instances:
   - dbm: true
     # SQL Server connection (Linux agent): use ODBC connector
     # Note: SQL Server format should be "host,port" not separate host and port
-    host: '${SQLHOST},${SQLPORT}'
+    host: 'tcp:${SQLHOST},${SQLPORT};Encrypt=no;TrustServerCertificate=yes'
     username: ${SQLUSER}
     # For dev/testing, set the cleartext password or configure the Agent secrets backend
     password: ${SQLPASSWORD}
