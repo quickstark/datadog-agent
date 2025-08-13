@@ -52,35 +52,35 @@
 
         # Always start strict
         # Make shell strict and noninteractive; also force dpkg to keep existing configs
+        # keep this earlier in your Dockerfile once per stage
         SHELL ["/bin/bash", "-o", "pipefail", "-c"]
         ENV DEBIAN_FRONTEND=noninteractive
 
-        # Show what we’re on (debug)
-        RUN cat /etc/os-release && dpkg --print-architecture
-
-        # Core deps (keep existing config files automatically to avoid the openssl prompt)
+        # ---- Install PostgreSQL + SQL Server ODBC (Ubuntu 24.04) ----
         RUN apt-get update \
         && apt-get install -y --no-install-recommends \
-            -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
-            curl gnupg ca-certificates unixodbc unixodbc-dev
-
-        # Microsoft repo keyring + Ubuntu 24.04 prod.list with signed-by
-        RUN mkdir -p /etc/apt/keyrings \
-        && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
-            | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg \
-        && chmod 0644 /etc/apt/keyrings/microsoft.gpg \
-        && curl -fsSL "https://packages.microsoft.com/config/ubuntu/24.04/prod.list" \
-            | sed 's#^deb #deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/microsoft.gpg] #' \
-            > /etc/apt/sources.list.d/mssql-release.list \
-        && apt-get update
-
-        # Install the ODBC driver (accept EULA) and Python DB libs
-        RUN ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
-        && pip3 install --no-cache-dir pyodbc psycopg2-binary \
+            -o Dpkg::Options::=--force-confdef \
+            -o Dpkg::Options::=--force-confold \
+            curl gnupg ca-certificates unixodbc unixodbc-dev \
+        # Microsoft repo via meta-package (sets up keys + sources for noble)
+        && curl -fsSL "https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb" \
+            -o /tmp/packages-microsoft-prod.deb \
+        && dpkg -i /tmp/packages-microsoft-prod.deb \
+        && rm /tmp/packages-microsoft-prod.deb \
+        && apt-get update \
+        # SQL Server ODBC driver 18
+        && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+        # Python DB clients
+        && pip3 install --no-cache-dir psycopg2-binary pyodbc \
+        # Clean
         && rm -rf /var/lib/apt/lists/*
 
-# (Optional) ensure driver is registered on slim bases
-# RUN printf "[ODBC Driver 18 for SQL Server]\nDescription=Microsoft ODBC Driver 18 for SQL Server\nDriver=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.*.so\nUsageCount=1\n" > /etc/odbcinst.ini
+        # (Optional) ensure ODBC 18 is registered on very slim bases:
+        # RUN if ! odbcinst -q -d | grep -q "ODBC Driver 18 for SQL Server"; then \
+        #   printf "[ODBC Driver 18 for SQL Server]\nDescription=Microsoft ODBC Driver 18 for SQL Server\nDriver=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.*.so\nUsageCount=1\n" > /etc/odbcinst.ini; \
+        # fi
+        # (Optional) ensure driver is registered on slim bases
+        # RUN printf "[ODBC Driver 18 for SQL Server]\nDescription=Microsoft ODBC Driver 18 for SQL Server\nDriver=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.*.so\nUsageCount=1\n" > /etc/odbcinst.ini
 
         # Note: Configuration files are now managed via volume mounts during deployment
         # This allows for easier updates without rebuilding the Docker image
