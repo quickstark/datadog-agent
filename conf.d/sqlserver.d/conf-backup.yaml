@@ -1,0 +1,55 @@
+init_config:
+
+instances:
+  - dbm: true
+    # SQL Server connection (Linux agent): use ODBC connector
+    # Note: SQL Server format should be "host,port" not separate host and port
+    host: 'tcp:${SQLHOST},${SQLPORT};Encrypt=no;TrustServerCertificate=yes'
+    username: ${SQLUSER}
+    # For dev/testing, set the cleartext password or configure the Agent secrets backend
+    password: ${SQLPASSWORD}
+    name: "SQLServer-Dev" # This is the friendly name that will appear in Datadog
+    reported_hostname: "SQLServer-Dev" # Specifically for DBM visualization
+    connector: odbc
+    driver: 'ODBC Driver 18 for SQL Server'
+    # TLS options for FreeTDS
+    encrypt: false
+    trust_server_certificate: true
+    tds_version: 8.0
+    # Timeout settings to prevent hanging connections
+    query_timeout: 10
+    connection_timeout: 5
+    # Database to connect to (should match your application database)
+    database: ${SQLDATABASE}
+    
+    # CRITICAL: Enable statement metrics for APM correlation
+    collect_statement_metrics: true
+    
+    # Enable activity metrics to capture running queries
+    collect_activity_metrics: true
+    
+    # Enable other metrics for comprehensive monitoring
+    collect_count_metrics: true
+    collect_database_size_metrics: true
+    
+    # Schema metrics (recommended for full DBM experience)
+    schemas_collection:
+      enabled: true
+    
+    # Database metrics collection
+    database_metrics:
+      # Enable metric collection for indexes
+      index_usage_metrics:
+        enabled: true
+    
+    # Reduce collection frequency
+    min_collection_interval: 60
+    
+    # Connection options
+    connect_timeout: 10
+    
+    # Tags for proper APM correlation
+    tags:
+      - 'service:sqlserver'
+      - 'env:dev'
+      - 'database:images'
