@@ -50,26 +50,41 @@
         #  && pip3 install --no-cache-dir pyodbc \
         #  && rm -rf /var/lib/apt/lists/*
 
-        # System deps + unixODBC
-        RUN apt-get update \
-        && apt-get install -y --no-install-recommends curl gnupg ca-certificates unixodbc unixodbc-dev \
-        # Set up Microsoft repo keyring (no apt-key)
-        && mkdir -p /etc/apt/keyrings \
+        # Always start strict
+        SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+        ENV DEBIAN_FRONTEND=noninteractive
+
+        # Show base details (so we know the right repo)
+        RUN cat /etc/os-release || true
+        RUN dpkg --print-architecture
+
+        RUN apt-get update
+        RUN apt-get install -y --no-install-recommends curl gnupg ca-certificates unixodbc unixodbc-dev
+
+        # Microsoft repo: keyring + signed-by (no apt-key)
+        RUN mkdir -p /etc/apt/keyrings \
         && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
-            | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg \
-        # Pick Debian version dynamically (11=bullseye, 12=bookworm)
-        && . /etc/os-release \
-        # Download prod.list and inject signed-by + arch filter
+        | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg \
+        && chmod 644 /etc/apt/keyrings/microsoft.gpg
+
+        # Use the right Debian codename by VERSION_ID (11 or 12)
+        RUN . /etc/os-release \
+        && echo "Using Debian VERSION_ID=${VERSION_ID}" \
         && curl -fsSL "https://packages.microsoft.com/config/debian/${VERSION_ID}/prod.list" \
-            | sed 's#^deb #deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/microsoft.gpg] #' \
-            > /etc/apt/sources.list.d/mssql-release.list \
-        && apt-get update \
-        && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
-        # Python client libs
-        && pip3 install --no-cache-dir pyodbc psycopg2-binary \
-        && rm -rf /var/lib/apt/lists/*
-        # Sanity checks at build-time (optional)
-        RUN odbcinst -q -d && ldconfig -p | grep -i msodbcsql || true
+        | sed 's#^deb #deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/microsoft.gpg] #' \
+        > /etc/apt/sources.list.d/mssql-release.list \
+        && cat /etc/apt/sources.list.d/mssql-release.list
+
+        # Debug update (if this fails, you’ll see why)
+        RUN apt-get update
+
+        # Install ODBC driver
+        RUN ACCEPT_EULA=Y apt-get install -y msodbcsql18
+
+        # Python DB libs — ensure the exact spelling
+        RUN pip3 install --no-cache-dir pyodbc psycopg2-binary
+
+        RUN rm -rf /var/lib/apt/lists/*
 
         # Note: Configuration files are now managed via volume mounts during deployment
         # This allows for easier updates without rebuilding the Docker image
