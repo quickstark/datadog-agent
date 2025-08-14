@@ -20,6 +20,7 @@ secrets/
 credentials/
 
 # Datadog Agent specific
+conf.d/archive/
 datadog-agent.log
 agent.log
 *.pid
