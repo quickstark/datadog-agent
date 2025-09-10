@@ -1,6 +1,6 @@
         # Stage 1: Builder
         # FROM datadog/agent:latest AS builder
-        FROM datadog/agent:7.54.0
+        FROM datadog/agent:latest
 
         # Install PostgreSQL dependencies
         RUN pip3 install --no-cache-dir psycopg2-binary
