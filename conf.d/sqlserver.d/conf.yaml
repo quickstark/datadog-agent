@@ -1,30 +1,30 @@
-init_config:
+# init_config:
 
-instances:
-  - host: "tcp:${SQLHOST},${SQLPORT}"
-    username: "${SQLUSER}"
-    password: "${SQLPASSWORD}"
-    driver: "ODBC Driver 18 for SQL Server"
-    database: "${SQLDATABASE}"
+# instances:
+#   - host: "tcp:${SQLHOST},${SQLPORT}"
+#     username: "${SQLUSER}"
+#     password: "${SQLPASSWORD}"
+#     driver: "ODBC Driver 18 for SQL Server"
+#     database: "${SQLDATABASE}"
 
-    # DBM + APM correlation
-    dbm: true
-    collect_statement_metrics: true
-    collect_activity_metrics: true
-    collect_count_metrics: true
-    collect_database_size_metrics: true
+#     # DBM + APM correlation
+#     dbm: true
+#     collect_statement_metrics: true
+#     collect_activity_metrics: true
+#     collect_count_metrics: true
+#     collect_database_size_metrics: true
 
-    # TLS / encryption handling for ODBC 18
-    connection_options:
-      Encrypt: no
-      TrustServerCertificate: yes
+#     # TLS / encryption handling for ODBC 18
+#     connection_options:
+#       Encrypt: no
+#       TrustServerCertificate: yes
 
-    # Helpful if SQL Server is slow to respond
-    query_timeout: 10
-    connection_timeout: 5
+#     # Helpful if SQL Server is slow to respond
+#     query_timeout: 10
+#     connection_timeout: 5
 
-    tags:
-      - "service:sqlserver"
-      - "env:${ENVIRONMENT}"
-      - "database:${SQLDATABASE}"
+#     tags:
+#       - "service:sqlserver"
+#       - "env:${ENVIRONMENT}"
+#       - "database:${SQLDATABASE}"
 

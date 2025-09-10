@@ -38,7 +38,7 @@ apm_config:
   apm_non_local_traffic: true
   compute_stats_by_span_kind: true
   # Point traces to HAProxy
-  apm_dd_url: http://192.168.1.100:3835
+  apm_dd_url: http://192.168.1.200:3835
 
 ####################################
 ## Remote Configuration ###########
@@ -46,7 +46,7 @@ apm_config:
 
 remote_configuration:
   enabled: true
-  rc_dd_url: http://192.168.1.100:3846
+  rc_dd_url: http://192.168.1.200:3846
   no_tls: true
 
 ####################################
