@@ -404,6 +404,7 @@ jobs:
                     sed -i "s/\${SQLUSER}/${{ secrets.SQLUSER }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     sed -i "s/\${SQLPASSWORD}/${{ secrets.SQLPASSWORD }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     sed -i "s/\${SQLDATABASE}/${{ secrets.SQLDATABASE }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
+                    sed -i "s/\${ENVIRONMENT}/${{ secrets.ENVIRONMENT }}/g" "$DATADOG_DIR/conf.d/$config_dir/conf.yaml"
                     ;;
                   snmp.d)
                     echo "    🔧 Substituting SNMP network monitoring credentials..."
