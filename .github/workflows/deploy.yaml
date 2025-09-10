@@ -2,7 +2,7 @@
 # This workflow deploys a Datadog Agent configuration that avoids container lock-up issues
 # on Synology NAS systems by disabling problematic features and capabilities.
 
-name: Build and Deploy Datadog Agent
+name: Deploy Datadog Agent
 
 on:
   workflow_dispatch:  # Allow manual triggering
